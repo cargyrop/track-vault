@@ -24,7 +24,8 @@ const folder = (id: number): PlaylistFolder => ({
 })
 
 function Probe({ folders }: { folders: PlaylistFolder[] | null }) {
-  const { expanded, toggleFolder, openFolder, collapseAll } = useFolderExpansion(folders)
+  const { expanded, toggleFolder, openFolder, collapseAll, expandAll } =
+    useFolderExpansion(folders)
   const rows: ReactElement[] = (folders ?? []).flatMap((entry) => [
       createElement(
         'button',
@@ -53,6 +54,11 @@ function Probe({ folders }: { folders: PlaylistFolder[] | null }) {
       'button',
       { key: 'collapse', type: 'button', 'data-collapse': 'all', onClick: collapseAll },
       'collapse',
+    ),
+    createElement(
+      'button',
+      { key: 'expand', type: 'button', 'data-expand': 'all', onClick: expandAll },
+      'expand',
     ),
   )
   return createElement('div', null, ...rows)
@@ -181,6 +187,14 @@ describe('useFolderExpansion', () => {
     click(mounted.host, 'data-collapse', null)
     await tick()
     expect(openIds(mounted.host)).toEqual([])
+    mounted.unmount()
+  })
+
+  it('opens every folder at once', async () => {
+    const mounted = await mount([folder(1), folder(2), folder(3)])
+    click(mounted.host, 'data-expand', null)
+    await tick()
+    expect(openIds(mounted.host)).toEqual([1, 2, 3])
     mounted.unmount()
   })
 

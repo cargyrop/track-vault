@@ -28,6 +28,8 @@ interface Props {
   onToggleFolder: (folderId: number) => void
   /** Opens a folder without closing it — what a drop inside one has to do. */
   onOpenFolder: (folderId: number) => void
+  /** Opens every folder at once — the other half of the same button. */
+  onExpandAll: () => void
   /** Shuts every folder at once. */
   onCollapseAll: () => void
   onSelect: (selection: PlaylistSelection) => void
@@ -105,6 +107,7 @@ export function PlaylistTree({
   expanded,
   onToggleFolder,
   onOpenFolder,
+  onExpandAll,
   onCollapseAll,
   onSelect,
   onCreateFolder,
@@ -537,15 +540,18 @@ export function PlaylistTree({
         >
           <ListPlusIcon />
         </button>
+        {/* One button for both directions: it shuts everything while anything is
+            open, and opens everything while nothing is. The icon says which of
+            the two the next press will do, so the button never lies about it. */}
         <button
           type="button"
           className="tool-btn"
-          aria-label="Collapse all folders"
-          title="Close every folder"
-          disabled={expanded.size === 0}
-          onClick={onCollapseAll}
+          aria-label={expanded.size ? 'Collapse all folders' : 'Expand all folders'}
+          title={expanded.size ? 'Close every folder' : 'Open every folder'}
+          disabled={folders.length === 0}
+          onClick={expanded.size ? onCollapseAll : onExpandAll}
         >
-          <CollapseIcon />
+          {expanded.size ? <CollapseIcon /> : <ExpandIcon />}
         </button>
       </div>
 
@@ -686,6 +692,30 @@ function LibraryIcon() {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+/** Two chevrons pointing outwards: open every folder. */
+function ExpandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">
+      <path
+        d="M6.5 9.5 12 4l5.5 5.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.5 14.5 12 20l5.5-5.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )

@@ -1,10 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { TrackWithSources } from '../lib/types'
 import { plural } from '../lib/format'
 import { ContextMenu, type ContextMenuItem } from './ContextMenu'
 import { PlayButton } from './PlayButton'
-import { TrackCover } from './TrackCover'
-import { ChevronRightIcon, FolderIcon, PlaylistIcon } from './icons'
+import { ChevronRightIcon, RepeatIcon, ShuffleIcon } from './icons'
 
 /**
  * What the open list is, and the one thing you do to it.
@@ -16,15 +15,11 @@ import { ChevronRightIcon, FolderIcon, PlaylistIcon } from './icons'
  * "Now playing …" bar and an info panel in another column — and named the same
  * playlist on all three.
  *
- * The cover is a mosaic of the first four covers in the list, not an icon. A
- * generic mark says "this is a playlist"; four album covers say *which* one,
- * and it is the only large piece of imagery a list can earn.
+ * The cover is drawn, not photographed: one record for a playlist, a shelf of
+ * them for a folder or the whole library. It used to be a mosaic of the list's
+ * own artwork, which said *which* list this is but went blank the moment a
+ * list held no covers yet; the object says what kind of list it is, always.
  */
-
-export interface HeaderTile {
-  coverUrl: string | null
-  videoId: string | null
-}
 
 interface Props {
   title: string
@@ -46,17 +41,6 @@ interface Props {
   /** Shown under the actions when another list is what is actually playing. */
   playingFrom?: string | null
   onShowPlayingFrom?: () => void
-}
-
-/** Up to four covers, from the front of the list, for the mosaic. */
-export function headerTiles(tracks: TrackWithSources[]): HeaderTile[] {
-  const tiles: HeaderTile[] = []
-  for (const track of tracks) {
-    if (tiles.length === 4 && track.coverUrl) break
-    tiles.push({ coverUrl: track.coverUrl ?? null, videoId: null })
-    if (tiles.length === 4) break
-  }
-  return tiles
 }
 
 function listNoun(kind: Props['kind']): 'list' | 'playlist' {
@@ -96,10 +80,8 @@ export function ListHeader({
 }: Props) {
   const menuButton = useRef<HTMLButtonElement | null>(null)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
-  const tiles = useMemo(() => headerTiles(tracks), [tracks])
   const time = totalTime(tracks)
   const count = tracks.length
-  const hasArt = tiles.some((tile) => tile.coverUrl)
 
   const openMenu = () => {
     const rect = menuButton.current?.getBoundingClientRect()
@@ -115,26 +97,8 @@ export function ListHeader({
       <div className="list-header-top">
         {/* The cover is decoration for the reader and a label would repeat the
             title beside it, so the whole block is hidden from assistive tech. */}
-        <div className={`list-cover ${hasArt ? 'has-art' : ''}`} aria-hidden="true">
-          {hasArt ? (
-            tiles.map((tile, index) => (
-              <TrackCover
-                key={index}
-                coverUrl={tile.coverUrl}
-                videoId={tile.videoId}
-                // Decoration: the list is named in the heading beside it, and a
-                // broken image's alt text would otherwise be drawn into the
-                // mosaic as a word.
-                alt=""
-                className="list-cover-tile"
-                placeholderClassName="list-cover-tile empty"
-              />
-            ))
-          ) : (
-            <span className="list-cover-icon">
-              {kind === 'folder' ? <FolderIcon /> : <PlaylistIcon />}
-            </span>
-          )}
+        <div className={`list-cover ${kind === 'playlist' ? 'single' : 'shelf'}`} aria-hidden="true">
+          {kind === 'playlist' ? <VinylRecord /> : <VinylShelf />}
         </div>
 
         <div className="list-header-text">
@@ -178,7 +142,7 @@ export function ListHeader({
           onClick={onToggleShuffle}
           title={shuffle ? 'Shuffle on' : 'Shuffle this list'}
         >
-          <ShuffleGlyph />
+          <ShuffleIcon />
           <span className="chip-label">Shuffle</span>
         </button>
         <button
@@ -189,7 +153,7 @@ export function ListHeader({
           onClick={onToggleRepeat}
           title={repeat ? 'Repeat on — the list starts again at the end' : 'Repeat this list'}
         >
-          <RepeatGlyph />
+          <RepeatIcon />
           <span className="chip-label">Repeat</span>
         </button>
         {onToggleDj && (
@@ -251,44 +215,61 @@ export function ListHeader({
   )
 }
 
-/** The two state marks live here rather than in `icons.tsx`: they are this
-    header's control labels, drawn once, and the list rows never show them. */
-function ShuffleGlyph() {
+/** The list cover, drawn rather than assembled from the list's own artwork.
+    One record for a playlist — a single set, played in an order; a shelf of
+    them for a folder or the whole library, which hold as many as you own. */
+function VinylRecord() {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+    <svg className="list-cover-art" viewBox="0 0 84 84" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="list-vinyl" cx="32%" cy="22%" r="82%">
+          <stop offset="0%" stopColor="#3a4860" />
+          <stop offset="52%" stopColor="#151d2b" />
+          <stop offset="100%" stopColor="#080c14" />
+        </radialGradient>
+      </defs>
+      <circle cx="42" cy="42" r="31" fill="url(#list-vinyl)" stroke="rgba(148,183,255,0.28)" />
+      <circle cx="42" cy="42" r="26" fill="none" stroke="rgba(255,255,255,0.07)" />
+      <circle cx="42" cy="42" r="21" fill="none" stroke="rgba(255,255,255,0.06)" />
+      <circle cx="42" cy="42" r="16" fill="none" stroke="rgba(255,255,255,0.05)" />
+      <circle cx="42" cy="42" r="10.5" fill="var(--accent)" opacity="0.85" />
+      <circle cx="42" cy="42" r="2.6" fill="#070a12" />
       <path
-        d="M4 7h3.2l3 5m0 0 3 5H19m0 0 2.5-2.5M19 17l2.5 2.5M4 17h3.2l2.4-4"
+        d="M24 26a25 25 0 0 1 19-9"
         fill="none"
-        stroke="currentColor"
-        strokeWidth="1.9"
+        stroke="rgba(255,255,255,0.16)"
+        strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-      <path d="M15.8 7H19m0 0 2.5 2.5M19 7l2.5-2.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function RepeatGlyph() {
+function VinylShelf() {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
-      <path
-        d="M5 11V9.4A3.4 3.4 0 0 1 8.4 6h10M15 3.4 18.4 6 15 8.6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M19 13v1.6A3.4 3.4 0 0 1 15.6 18h-10M9 15.4 5.6 18 9 20.6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg className="list-cover-art" viewBox="0 0 84 84" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="list-vinyl-shelf" cx="32%" cy="22%" r="82%">
+          <stop offset="0%" stopColor="#33415a" />
+          <stop offset="55%" stopColor="#141c29" />
+          <stop offset="100%" stopColor="#080c14" />
+        </radialGradient>
+      </defs>
+      {[
+        { cx: 21, cy: 38, r: 15 },
+        { cx: 42, cy: 33, r: 17 },
+        { cx: 63, cy: 38, r: 15 },
+      ].map(({ cx, cy, r }) => (
+        <g key={cx}>
+          <circle cx={cx} cy={cy} r={r} fill="url(#list-vinyl-shelf)" stroke="rgba(148,183,255,0.26)" />
+          <circle cx={cx} cy={cy} r={r - 6} fill="none" stroke="rgba(255,255,255,0.06)" />
+          <circle cx={cx} cy={cy} r="3.4" fill="var(--accent)" opacity="0.85" />
+        </g>
+      ))}
+      <path d="M8 61h68" stroke="rgba(148,183,255,0.34)" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M16 67h52" stroke="rgba(148,183,255,0.16)" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
+
 

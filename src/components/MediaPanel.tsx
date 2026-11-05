@@ -7,9 +7,12 @@ export type MediaPane = 'info' | 'lyrics'
 interface Props {
   track: TrackWithSources | null
   pane: MediaPane
-  onPaneChange: (pane: MediaPane) => void
-  /** The card is the only editor, so both empty states point at it. */
-  onOpenCard?: () => void
+  /**
+   * The card is the only editor, so both empty states point at it — and they
+   * open it already in edit mode, since "no lyrics yet" is a request to write
+   * some rather than to read a card that has none.
+   */
+  onOpenCard?: (edit?: boolean) => void
 }
 
 /**
@@ -23,8 +26,11 @@ interface Props {
  *
  * Reading only. Both faces say how to change what they show, and both point at
  * the track card, which owns the single editing path.
+ *
+ * It has no switch of its own: Info and Lyrics are transport buttons now, in the
+ * row with the other controls, and this panel is the text they open.
  */
-export function MediaPanel({ track, pane, onPaneChange, onOpenCard }: Props) {
+export function MediaPanel({ track, pane, onOpenCard }: Props) {
   const body = useRef<HTMLDivElement | null>(null)
   const info = track?.info ? stripGenreLines(track.info).trim() : ''
   const lyrics = track?.lyrics?.trim() ?? ''
@@ -36,39 +42,11 @@ export function MediaPanel({ track, pane, onPaneChange, onOpenCard }: Props) {
   }, [track?.id, pane])
 
   return (
-    <section className="media-panel" aria-label="Track information and lyrics">
-      <div className="segmented" role="tablist" aria-label="Info or lyrics">
-        <button
-          type="button"
-          role="tab"
-          id="media-tab-info"
-          aria-selected={pane === 'info'}
-          aria-controls="media-body"
-          className={pane === 'info' ? 'segment on' : 'segment'}
-          onClick={() => onPaneChange('info')}
-        >
-          Info
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="media-tab-lyrics"
-          aria-selected={pane === 'lyrics'}
-          aria-controls="media-body"
-          className={pane === 'lyrics' ? 'segment on' : 'segment'}
-          onClick={() => onPaneChange('lyrics')}
-        >
-          Lyrics
-        </button>
-      </div>
-
-      <div
-        className="media-body"
-        id="media-body"
-        role="tabpanel"
-        aria-labelledby={pane === 'info' ? 'media-tab-info' : 'media-tab-lyrics'}
-        ref={body}
-      >
+    <section
+      className="media-panel"
+      aria-label={pane === 'info' ? 'Track information' : 'Lyrics'}
+    >
+      <div className="media-body" id="media-body" ref={body}>
         {pane === 'info' ? (
           info ? (
             <p className="media-text">{linkify(info)}</p>
@@ -76,8 +54,8 @@ export function MediaPanel({ track, pane, onPaneChange, onOpenCard }: Props) {
             <div className="media-empty">
               <p>No info for this track yet.</p>
               {onOpenCard && (
-                <button type="button" className="ghost-btn" onClick={onOpenCard}>
-                  Add info in the track card
+                <button type="button" className="ghost-btn" onClick={() => onOpenCard(true)}>
+                  Edit track card
                 </button>
               )}
             </div>
@@ -99,8 +77,8 @@ export function MediaPanel({ track, pane, onPaneChange, onOpenCard }: Props) {
           <div className="media-empty">
             <p>No lyrics stored for this track.</p>
             {onOpenCard && (
-              <button type="button" className="ghost-btn" onClick={onOpenCard}>
-                Look up or add lyrics
+              <button type="button" className="ghost-btn" onClick={() => onOpenCard(true)}>
+                Edit track card
               </button>
             )}
           </div>

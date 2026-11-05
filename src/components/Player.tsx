@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { shouldCarryPlayback } from '../lib/playback'
 import { shouldShowHud, HUD_IDLE_MS } from '../lib/hud'
 import {
@@ -38,6 +38,8 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   QueueIcon,
+  RepeatIcon,
+  ShuffleIcon,
 } from './icons'
 
 interface Props {
@@ -100,7 +102,7 @@ interface Props {
    * from the corner of the player, so seeing what a track is does not mean
    * leaving for YouTube.
    */
-  onOpenCard?: (track: TrackWithSources) => void
+  onOpenCard?: (track: TrackWithSources, edit?: boolean) => void
   /**
    * Reports the length YouTube actually reports for the stream.
    *
@@ -148,6 +150,17 @@ interface Props {
   isDjSuggestion?: boolean
   djSeedLabel?: string | null
   onToggleDj?: (() => void) | null
+  /**
+   * The list-level switches, repeated beside Up next.
+   *
+   * The header beside the tracklist owns them, but the queue is where you
+   * notice that the end of the list is coming — so the two settings that decide
+   * what happens there sit next to the tracks they apply to.
+   */
+  shuffle?: boolean
+  repeat?: boolean
+  onToggleShuffle?: (() => void) | null
+  onToggleRepeat?: (() => void) | null
   /** Playlists the playing track already belongs to, marked in the dialog. */
   memberPlaylistIds?: ReadonlySet<number>
 }
@@ -231,6 +244,10 @@ export function Player({
   isDjSuggestion = false,
   djSeedLabel = null,
   onToggleDj = null,
+  shuffle = false,
+  repeat = false,
+  onToggleShuffle = null,
+  onToggleRepeat = null,
   memberPlaylistIds,
 }: Props) {
   const [quality] = useState<PlaybackQuality>(AUDIO_SAVER_QUALITY)
@@ -267,6 +284,10 @@ export function Player({
   // read for a moment and dismissed, and what is coming next is never worth a
   // permanent third of the window.
   const [queueOpen, setQueueOpen] = useState(false)
+  // Whether the words under the transport are showing. Closed on arrival: the
+  // text is something you ask for, and asking for the face that is already
+  // showing puts it away again.
+  const [paneOpen, setPaneOpen] = useState(false)
   useEffect(() => {
     setFileOpen(false)
   }, [track?.id])
@@ -433,6 +454,15 @@ export function Player({
     if (document.fullscreenElement) void document.exitFullscreen?.()
   }, [view])
 
+  // The dock has no picture on it, so a track being watched goes back to Main
+  // the moment the player shrinks. Left alone it would keep fetching video for
+  // a one-pixel stage nobody can see, and reopening the sheet would then show a
+  // clip that had been running off-screen the whole time.
+  useEffect(() => {
+    if (variant !== 'dock' || view === 'audio') return
+    onViewChange?.('audio')
+  }, [variant, view, onViewChange])
+
   /**
    * Handles the view switch.
    *
@@ -576,6 +606,24 @@ export function Player({
       }
     },
     [source, effectiveQuality, view, volume, muted, unmuteIfAllowed, trackId],
+  )
+
+  /**
+   * Opens or closes the text below the transport.
+   *
+   * One face at a time: choosing the other face swaps the text instead of
+   * stacking it, and choosing the face that is already showing puts it away.
+   */
+  const showPane = useCallback(
+    (next: MediaPane) => {
+      if (paneOpen && pane === next) {
+        setPaneOpen(false)
+        return
+      }
+      onPaneChange?.(next)
+      setPaneOpen(true)
+    },
+    [paneOpen, pane, onPaneChange],
   )
 
   const togglePlay = useCallback(() => {
@@ -877,27 +925,30 @@ export function Player({
   }, [view, trackId, rebuildFor, destroyPlayer])
 
   const toggleFullscreen = useCallback(() => {
+    // There is no picture to watch in audio mode, and the stage is a one-pixel
+    // sink there: taking that fullscreen would fill the window with a black box.
+    if (view === 'audio') return
     const el = containerRef.current
     if (!el) return
     if (maximized) {
-      // Leaving fullscreen returns to the Main source in single-pane mode:
-      // the overlay was the video, so closing it ends the video view rather
-      // than stranding an inline surface nobody asked to watch.
+      // Leaving fullscreen shrinks the same video back into the sheet. It used
+      // to fall back to Main, which turned a clip you were two minutes into
+      // into a black box: the source you picked is a property of the track, not
+      // of how much of the window the picture is using.
       setMaximized(false)
       exitNativeFullscreen()
-      onViewChange?.('audio')
       return
     }
     // Always take over the window first: this works in every browser.
     setMaximized(true)
     void toggleNativeFullscreen(el).catch(() => undefined)
-  }, [maximized, onViewChange])
+  }, [maximized, view])
 
   useEffect(() => {
     const onChange = () => {
       if (!document.fullscreenElement) {
-        // Esc out of native fullscreen counts as the same gesture as the
-        // HUD's exit button: back to Main in single-pane mode.
+        // Esc out of native fullscreen is the same gesture as the HUD's exit
+        // button, and it keeps whatever source was on screen.
         setMaximized(false)
         // Leaving fullscreen releases the landscape hold the video overlay
         // took: without this the phone would stay landscape-locked back in
@@ -1043,6 +1094,34 @@ export function Player({
     toggleFullscreen,
   ])
 
+  // The queue can be hundreds of rows and this component re-renders on every
+  // progress tick, so the rows are rebuilt only when the queue itself (or the
+  // playing row) changes — not on every tick of the clock. Declared above the
+  // empty-player return so the hooks stay unconditional.
+  const queueRows = useMemo(
+    () =>
+      queue.map((entry, index) => (
+        <li key={entry.id} className={entry.id === trackId ? 'playing' : ''}>
+          <button
+            type="button"
+            onClick={() => onSelectTrack?.(entry)}
+            disabled={!onSelectTrack}
+            title={`Play ${entry.title}`}
+          >
+            <span className="queue-num">{index + 1}</span>
+            {/* Title and artist read as one line of text, the way a
+                tracklist does; the artist is not a second column. */}
+            <span className="queue-text">
+              <span className="queue-title">{entry.title}</span>
+              <span className="queue-artist">{entry.artist}</span>
+            </span>
+            <span className="queue-time">{formatDuration(entry.duration)}</span>
+          </button>
+        </li>
+      )),
+    [queue, trackId, onSelectTrack],
+  )
+
   // ------------------------------------------------------------- render
 
   if (!track) {
@@ -1053,13 +1132,6 @@ export function Player({
             <DiscIcon />
           </span>
           <p className="dock-empty-text">Nothing playing</p>
-          <button
-            type="button"
-            className="ghost-btn dock-empty-action"
-            onClick={onOpenLibrary}
-          >
-            Open the library
-          </button>
         </div>
       )
     }
@@ -1095,6 +1167,151 @@ export function Player({
       ? 'Resume (space)'
       : 'Start streaming (space)'
 
+  /**
+   * The stage: the one node the stream lives in.
+   *
+   * It is the first child of both shapes on purpose. React reconciles children
+   * by position, so keeping it at index 0 in the dock and in the sheet is what
+   * lets the two layouts trade places around a frame that never moves — and a
+   * frame that never moves is a stream that never stops. Audio mode and the dock
+   * give it the `sink` class: still mounted, still streaming, just a one-pixel
+   * box with no picture to show.
+   */
+  const sink = view === 'audio' || variant === 'dock'
+  const stage = (
+    <div
+      ref={containerRef}
+      className={['surface', sink ? 'sink' : 'video', maximized ? 'maximized' : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {/* The frame keeps YouTube's fixed logical size and is scaled to fit,
+          because the API writes that size inline where CSS cannot reach it. A
+          sink keeps the scale at 1: a zero-sized frame is a frame a browser may
+          stop rendering, and the sound has to keep coming out of it. */}
+      <div
+        className="yt-frame-fit"
+        style={{
+          transform: `translate(-50%, -50%) scale(${sink ? 1 : frameScale || 0})`,
+        }}
+      >
+        <div ref={mountRef} className="yt-mount" />
+      </div>
+
+      {/* The fullscreen bar. The transport is behind the picture while
+          maximized, so the controls have to exist here too. It carries what a
+          viewer watching a video needs: the two skips, play/pause, the volume
+          and the way out. YouTube's own controls are never shown — the frame
+          takes no pointer events, so it never even draws them. */}
+      {maximized && (
+        <div
+          className={`fs-hud ${hudVisible ? 'show' : 'hide'}`}
+          onPointerEnter={() => setCursorActive(true)}
+          onPointerLeave={() => setCursorActive(false)}
+        >
+          <div className="fs-hud-row">
+            <button
+              type="button"
+              className="fs-btn"
+              onClick={() => advance(-1)}
+              disabled={!onAdvance || queue.length < 2}
+              aria-label="Previous track"
+              title="Previous (p)"
+            >
+              <PrevIcon />
+            </button>
+            <button
+              type="button"
+              className="fs-btn primary"
+              onClick={togglePlay}
+              aria-label={primaryLabel}
+              title={primaryTitle}
+            >
+              <PlayIcon playing={playing} />
+            </button>
+            <button
+              type="button"
+              className="fs-btn"
+              onClick={() => advance(1)}
+              disabled={!onAdvance || queue.length < 2}
+              aria-label="Next track"
+              title="Next (n)"
+            >
+              <NextIcon />
+            </button>
+            <span className="fs-time">
+              {formatClock(time)} / {formatClock(duration)}
+            </span>
+            {/* The button toggles mute and reveals a slider, which is what the
+                transport has permanently; the bar has no room for both. */}
+            <div
+              className="fs-volume"
+              onPointerEnter={() => setFsVolumeOpen(true)}
+              onPointerLeave={() => setFsVolumeOpen(false)}
+            >
+              <button
+                type="button"
+                className="fs-btn"
+                onClick={() => {
+                  toggleMute()
+                  setFsVolumeOpen(true)
+                }}
+                aria-label={muted ? 'Unmute and show volume' : 'Mute and show volume'}
+                aria-pressed={muted}
+                aria-expanded={fsVolumeOpen}
+                title={
+                  muted
+                    ? `Unmute (m) — volume ${volume}%`
+                    : `Mute (m) — volume ${volume}%`
+                }
+              >
+                <VolumeIcon muted={muted} />
+              </button>
+              {fsVolumeOpen && (
+                <input
+                  className="volume-slider fs-volume-slider"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={displayVolume(volume, muted)}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  aria-label="Volume"
+                  aria-valuetext={muted ? 'muted' : `${volume} percent`}
+                  title={`Volume ${displayVolume(volume, muted)}%`}
+                  style={{
+                    ['--progress' as string]: `${displayVolume(volume, muted)}%`,
+                  }}
+                />
+              )}
+            </div>
+            <button
+              type="button"
+              className="fs-btn"
+              onClick={toggleFullscreen}
+              aria-label="Exit fullscreen"
+              title="Exit fullscreen (Esc)"
+            >
+              <FullscreenIcon />
+            </button>
+          </div>
+          <input
+            className="seek fs-seek"
+            type="range"
+            min={0}
+            max={Math.max(duration, 1)}
+            step={1}
+            value={Math.min(time, duration || 0)}
+            onChange={(e) => seek(Number(e.target.value))}
+            disabled={!started}
+            aria-label="Seek"
+            style={{ ['--progress' as string]: `${progress}%` }}
+          />
+        </div>
+      )}
+    </div>
+  )
+
   // The dock: three zones, the way a hi-fi is laid out. What is playing on the
   // left, the transport and the position in the middle, and the things you set
   // once on the right. Centre is where the eye goes, so centre is where Play
@@ -1102,6 +1319,7 @@ export function Player({
   if (variant === 'dock') {
     return (
       <div className="player dock">
+        {stage}
         <div className="dock-left">
           <button
             type="button"
@@ -1213,10 +1431,6 @@ export function Player({
           </button>
         </div>
 
-        {/* The stream lives here in both shapes: the mount is the same node, so
-            opening the full view never interrupts what is playing. */}
-        <div ref={view !== 'audio' ? undefined : mountRef} className="yt-mount audio" />
-
         {/* No hairline along the bar's bottom edge any more: the seek bar is in
             the middle of the dock now, and two progress indicators 30px apart
             is one too many. */}
@@ -1225,7 +1439,8 @@ export function Player({
   }
 
   return (
-    <section className="player full">
+    <div className="player full">
+      {stage}
       {/* The way back to the dock, the queue, and the fact that this is a
           screen rather than a corner of one. */}
       <header className="player-screen-head">
@@ -1349,153 +1564,6 @@ export function Player({
 
       {error && <p className="surface-error">{error}</p>}
 
-      {/* Video surface only when explicitly requested. */}
-      {view !== 'audio' && (
-        <div
-          ref={containerRef}
-          className={`surface video ${maximized ? 'maximized' : ''}`}
-        >
-          {/* The frame keeps YouTube's fixed logical size and is scaled to fit,
-              because the API writes that size inline where CSS cannot reach it. */}
-          <div
-            className="yt-frame-fit"
-            style={{
-              transform: `translate(-50%, -50%) scale(${frameScale || 0})`,
-            }}
-          >
-            <div ref={mountRef} className="yt-mount" />
-          </div>
-
-          {/* Fullscreen-only control bar. The transport below the surface is
-              hidden behind it while maximized, so the controls have to exist
-              here too. `pointer-events` is re-enabled on the bar itself (the
-              frame disables it so YouTube never sees a hover) so it stays
-              clickable, and the whole bar keeps itself awake on interaction. */}
-          {maximized && (
-            <div
-              className={`fs-hud ${hudVisible ? 'show' : 'hide'}`}
-              onPointerEnter={() => setCursorActive(true)}
-              onPointerLeave={() => setCursorActive(false)}
-            >
-              <div className="fs-hud-row">
-                <button
-                  type="button"
-                  className="fs-btn"
-                  onClick={() => advance(-1)}
-                  disabled={!onAdvance || queue.length < 2}
-                  aria-label="Previous track"
-                  title="Previous (p)"
-                >
-                  <PrevIcon />
-                </button>
-                <button
-                  type="button"
-                  className="fs-btn primary"
-                  onClick={togglePlay}
-                  aria-label={primaryLabel}
-                  title={primaryTitle}
-                >
-                  <PlayIcon playing={playing} />
-                </button>
-                <button
-                  type="button"
-                  className="fs-btn"
-                  onClick={stop}
-                  disabled={!started}
-                  aria-label="Stop"
-                  title="Stop (s)"
-                >
-                  <StopIcon />
-                </button>
-                <button
-                  type="button"
-                  className="fs-btn"
-                  onClick={() => advance(1)}
-                  disabled={!onAdvance || queue.length < 2}
-                  aria-label="Next track"
-                  title="Next (n)"
-                >
-                  <NextIcon />
-                </button>
-                <span className="fs-time">
-                  {formatClock(time)} / {formatClock(duration)}
-                </span>
-                {/* Sound: the button toggles mute and reveals a slider, which
-                    is what the transport has permanently. The bar has no room
-                    for both, and a control you cannot reach in fullscreen is not
-                    a control. Hover opens it too, and it closes when the pointer
-                    leaves — but not on blur, so it survives keyboard use. */}
-                <div
-                  className="fs-volume"
-                  onPointerEnter={() => setFsVolumeOpen(true)}
-                  onPointerLeave={() => setFsVolumeOpen(false)}
-                >
-                  <button
-                    type="button"
-                    className="fs-btn"
-                    onClick={() => {
-                      toggleMute()
-                      setFsVolumeOpen(true)
-                    }}
-                    aria-label={muted ? 'Unmute and show volume' : 'Mute and show volume'}
-                    aria-pressed={muted}
-                    aria-expanded={fsVolumeOpen}
-                    title={
-                      muted
-                        ? `Unmute (m) — volume ${volume}%`
-                        : `Mute (m) — volume ${volume}%`
-                    }
-                  >
-                    {/* The same drawn mark as the transport, for the same
-                        reason: the emoji version was the one coloured thing in
-                        an otherwise monochrome bar. */}
-                    <VolumeIcon muted={muted} />
-                  </button>
-                  {fsVolumeOpen && (
-                    <input
-                      className="volume-slider fs-volume-slider"
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={displayVolume(volume, muted)}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      aria-label="Volume"
-                      aria-valuetext={muted ? 'muted' : `${volume} percent`}
-                      title={`Volume ${displayVolume(volume, muted)}%`}
-                      style={{
-                        ['--progress' as string]: `${displayVolume(volume, muted)}%`,
-                      }}
-                    />
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="fs-btn"
-                  onClick={toggleFullscreen}
-                  aria-label="Exit fullscreen"
-                  title="Exit fullscreen (Esc)"
-                >
-                  <FullscreenIcon />
-                </button>
-              </div>
-              <input
-                className="seek fs-seek"
-                type="range"
-                min={0}
-                max={Math.max(duration, 1)}
-                step={1}
-                value={Math.min(time, duration || 0)}
-                onChange={(e) => seek(Number(e.target.value))}
-                disabled={!started}
-                aria-label="Seek"
-                style={{ ['--progress' as string]: `${progress}%` }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Progress, directly under the picture and above the buttons: the bar
           belongs to what is playing, so it sits between the video and the
           controls rather than below them. */}
@@ -1588,9 +1656,73 @@ export function Player({
         />
         </div>
 
-        {/* The card and the filing button belong with the transport, not in a
-            corner of the artwork: they act on the track that is playing, which
-            is what everything in this row acts on. */}
+        {/* What the track says, as two buttons in the row rather than a switch
+            of its own: they open the text below, and pressing the same one again
+            puts it away. */}
+        <div className="transport-panes">
+          <button
+            type="button"
+            className="t-btn"
+            onClick={() => showPane('info')}
+            aria-pressed={paneOpen && pane === 'info'}
+            aria-expanded={paneOpen && pane === 'info'}
+            aria-controls="media-body"
+            aria-label="Show track information"
+            title="Info"
+          >
+            <InfoIcon />
+          </button>
+          <button
+            type="button"
+            className="t-btn"
+            onClick={() => showPane('lyrics')}
+            aria-pressed={paneOpen && pane === 'lyrics'}
+            aria-expanded={paneOpen && pane === 'lyrics'}
+            aria-controls="media-body"
+            aria-label="Show the lyrics"
+            title="Lyrics"
+          >
+            <LyricsIcon />
+          </button>
+        </div>
+
+        {/* What you are listening to, kept apart from what you do with the
+            record: the mode switch is a setting, the two buttons above are
+            actions. Three buttons rather than one that flips, because the filled
+            one has to answer "which source am I hearing?" at a glance. */}
+        <div className="transport-views">
+          {(['audio', 'video', 'live'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="t-btn"
+              onClick={() => onViewChange?.(option)}
+              aria-pressed={view === option}
+              aria-label={`Play ${option === 'audio' ? 'Main' : option === 'video' ? 'official video clip' : 'Live'}`}
+              title={`Play ${option === 'audio' ? 'Main' : option === 'video' ? 'official video clip' : 'Live'}`}
+            >
+              {option === 'audio' ? <AudioIcon /> : option === 'video' ? <VideoIcon /> : <span className="live-mark">LIVE</span>}
+            </button>
+          ))}
+          {/* Only a picture can be watched fullscreen, so the control exists
+              only while there is one. */}
+          {view !== 'audio' && (
+            <button
+              type="button"
+              className="t-btn"
+              onClick={toggleFullscreen}
+              aria-label="Watch fullscreen"
+              title="Fullscreen (f)"
+            >
+              <FullscreenIcon />
+            </button>
+          )}
+        </div>
+
+        {/* Filing and the card sit at the right end of the row, past the modes:
+            they act on the track that is playing, which is what the mode switch
+            also describes — but they are actions, not settings, so they follow
+            the row's reading order instead of interrupting it. */}
         {track && (
           <div className="transport-actions">
             {onAddToPlaylist && playlists && (
@@ -1614,29 +1746,8 @@ export function Player({
             >
               <TrackCardIcon />
             </button>
-
           </div>
         )}
-
-        {/* What you are listening to, kept apart from what you do with the
-            record: the mode switch is a setting, the two buttons above are
-            actions. Three buttons rather than one that flips, because the filled
-            one has to answer "which source am I hearing?" at a glance. */}
-        <div className="transport-views">
-          {(['audio', 'video', 'live'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                className="t-btn"
-                onClick={() => onViewChange?.(option)}
-                aria-pressed={view === option}
-                aria-label={`Play ${option === 'audio' ? 'Main' : option === 'video' ? 'official video clip' : 'Live'}`}
-                title={`Play ${option === 'audio' ? 'Main' : option === 'video' ? 'official video clip' : 'Live'}`}
-              >
-                {option === 'audio' ? <AudioIcon /> : option === 'video' ? <VideoIcon /> : <span className="live-mark">LIVE</span>}
-            </button>
-          ))}
-        </div>
       </div>
 
       {soundBlocked && (
@@ -1707,15 +1818,13 @@ export function Player({
       )}
 
 
-      {/* The hidden 1x1 iframe that actually streams the audio. */}
-      <div ref={view !== 'audio' ? undefined : mountRef} className="yt-mount audio" />
-
-      <MediaPanel
-        track={track}
-        pane={pane}
-        onPaneChange={onPaneChange ?? (() => undefined)}
-        onOpenCard={onOpenCard ? () => onOpenCard(track) : undefined}
-      />
+      {paneOpen && (
+        <MediaPanel
+          track={track}
+          pane={pane}
+          onOpenCard={onOpenCard ? (edit) => onOpenCard(track, edit) : undefined}
+        />
+      )}
 
       {queueOpen && (
         <section className="queue-panel" aria-label="Queue">
@@ -1725,32 +1834,60 @@ export function Player({
               {queue.length} {queue.length === 1 ? 'track' : 'tracks'}
               {sourceTitle ? ` from ${sourceTitle}` : ''}
             </span>
-          </div>
-          <ul className="queue-list">
-            {queue.map((entry, index) => (
-              <li key={entry.id} className={entry.id === trackId ? 'playing' : ''}>
+            {/* The three switches that decide what happens at the end of the
+                list, next to the list they act on: Shuffle and Repeat are the
+                same state the tracklist header's chips flip, and DJ is the
+                station. */}
+            <div className="queue-tools">
+              <button
+                type="button"
+                className="q-tool"
+                aria-pressed={shuffle}
+                aria-label="Shuffle"
+                title={shuffle ? 'Shuffle on' : 'Shuffle this list'}
+                disabled={!onToggleShuffle}
+                onClick={() => onToggleShuffle?.()}
+              >
+                <ShuffleIcon />
+              </button>
+              <button
+                type="button"
+                className="q-tool"
+                aria-pressed={repeat}
+                aria-label="Repeat"
+                title={repeat ? 'Repeat on — the list starts again at the end' : 'Repeat this list'}
+                disabled={!onToggleRepeat}
+                onClick={() => onToggleRepeat?.()}
+              >
+                <RepeatIcon />
+              </button>
+              {onToggleDj && (
                 <button
                   type="button"
-                  onClick={() => onSelectTrack?.(entry)}
-                  disabled={!onSelectTrack}
-                  title={`Play ${entry.title}`}
+                  className="q-tool"
+                  aria-pressed={djOn}
+                  aria-label="DJ"
+                  title={
+                    djOn
+                      ? 'DJ on — turn the station off'
+                      : 'DJ this list — keep playing similar tracks after it ends'
+                  }
+                  onClick={onToggleDj}
                 >
-                  <span className="queue-num">{index + 1}</span>
-                  {/* Title and artist read as one line of text, the way a
-                      tracklist does; the artist is not a second column. */}
-                  <span className="queue-text">
-                    <span className="queue-title">{entry.title}</span>
-                    <span className="queue-artist">{entry.artist}</span>
+                  <span className="q-dj" aria-hidden="true">
+                    ✦
                   </span>
-                  <span className="queue-time">{formatDuration(entry.duration)}</span>
                 </button>
-              </li>
-            ))}
+              )}
+            </div>
+          </div>
+          <ul className="queue-list">
+            {queueRows}
             {queue.length === 0 && <li className="hint">No list is playing.</li>}
           </ul>
         </section>
       )}
-    </section>
+    </div>
   )
 }
 
@@ -1800,11 +1937,28 @@ function PlayIcon({ playing }: { playing: boolean }) {
 }
 
 
-/** Stop: the fullscreen bar keeps it, the transport no longer does. */
-function StopIcon() {
+/** An "i" in a circle: what the track is. */
+function InfoIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-      <rect x="5.6" y="5.6" width="12.8" height="12.8" rx="2.4" fill="currentColor" />
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" strokeWidth="1.9" />
+      <path d="M12 11v5.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="8.2" r="1.3" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Lines of words: the lyrics. */
+function LyricsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+      <path
+        d="M4.5 6.5h15M4.5 11.5h12M4.5 16.5h8.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   )
 }

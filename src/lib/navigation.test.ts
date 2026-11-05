@@ -99,6 +99,12 @@ describe('readNav', () => {
     expect(readNav(JSON.stringify({ tab: 'you' })).tab).toBe('library')
   })
 
+  it('never restores into the player either', () => {
+    // The player is a sheet opened from the dock, so a launch that restored it
+    // opened on an empty player with the library behind it.
+    expect(readNav(JSON.stringify({ tab: 'playing' })).tab).toBe('library')
+  })
+
   it('starts at the library when there is nothing stored', () => {
     expect(readNav(null)).toEqual(INITIAL_NAV)
   })
@@ -114,10 +120,12 @@ describe('readNav', () => {
     expect(readNav('{ not json')).toEqual(INITIAL_NAV)
   })
 
-  it('keeps the sidebar open unless it was explicitly closed', () => {
+  it('opens the library column on every launch', () => {
     expect(readNav(JSON.stringify({ tab: 'you' })).sidebarOpen).toBe(true)
+    // Even a session that ended with the column shut comes back with it open:
+    // the library on the left is the shape the app starts in.
     expect(
       readNav(JSON.stringify({ tab: 'you', sidebarOpen: false })).sidebarOpen,
-    ).toBe(false)
+    ).toBe(true)
   })
 })

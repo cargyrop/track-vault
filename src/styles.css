@@ -1960,23 +1960,59 @@ h1 {
   min-height: 100vh;
 }
 
-/* The mount is the element YT.Player attaches to. In audio mode it is a 1x1
-   offscreen iframe: the video still streams at YouTube's lowest rendition, but
-   no visible chrome is left for it to shrink into. */
+/* The sink: the stage when there is no picture to show — audio mode, and the
+   dock, where the sheet's own surface is the picture. It is still mounted and
+   still streaming; it is simply one pixel the compositor can ignore. Fixed, so
+   it takes no space in either layout. */
+.surface.sink {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  aspect-ratio: auto;
+  opacity: 0;
+  box-shadow: none;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* The sheet's own order. The stage is the first child of both shapes so its
+   frame is never moved when the dock and the sheet trade places around it;
+   these put the picture back under the track's details, where it belongs. */
+.player.full > .surface {
+  order: 3;
+}
+
+.player.full > .progress-row {
+  order: 4;
+}
+
+.player.full > .transport {
+  order: 5;
+}
+
+.player.full > .hint {
+  order: 6;
+}
+
+.player.full > .media-panel {
+  order: 7;
+}
+
+.player.full > .queue-panel {
+  order: 8;
+}
+
+/* The mount is the element YT.Player attaches to. */
 .yt-mount {
   width: 100%;
   height: 100%;
-}
-
-/* In audio mode the streaming frame is a 1x1 offscreen iframe: the audio still
-   plays, but there is no visible video chrome at all. */
-.yt-mount.audio {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
 }
 
 .surface-error {
@@ -4278,39 +4314,26 @@ h1 {
   align-items: flex-start;
 }
 
+/* The cover is drawn: one record for a playlist, a shelf of them for a folder
+   or the whole library. The art fills the frame edge to edge. */
 .list-cover {
   flex: none;
   width: 84px;
   height: 84px;
   border-radius: 14px;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  background: var(--s2);
+  display: block;
+  background:
+    radial-gradient(120% 120% at 20% 0%, rgba(56, 189, 248, 0.16), transparent 70%),
+    var(--s2);
   border: 1px solid var(--line);
   box-shadow: var(--lift), var(--sh-2);
 }
 
-.list-cover-icon {
-  grid-column: span 2;
-  grid-row: span 2;
-  display: grid;
-  place-items: center;
-  color: var(--accent);
-  background: radial-gradient(120% 120% at 20% 0%, rgba(56, 189, 248, 0.18), transparent 70%);
-}
-
-.list-cover-tile,
-.list-cover img {
+.list-cover-art {
   width: 100%;
   height: 100%;
-  object-fit: cover;
   display: block;
-}
-
-.list-cover-tile.empty {
-  background: var(--s3);
 }
 
 .list-header-text {
@@ -4886,8 +4909,11 @@ h1 {
 }
 
 .layout-desktop .player-host.expanded {
-  inset: 6vh 50% auto 50%;
-  transform: translateX(-50%);
+  /* Centred with margins, not a transform: a transformed ancestor becomes the
+     containing block for its fixed descendants, which is what kept the
+     maximized video inside the sheet instead of on the whole screen. */
+  inset: 6vh 0 auto 0;
+  margin: 0 auto;
   width: min(860px, 92vw);
   max-height: 88vh;
   border-radius: 22px;
@@ -4988,10 +5014,18 @@ h1 {
   place-items: center;
   width: 38px;
   height: 38px;
+  /* Buttons the app over carry 7px 11px of padding. On a 38px circle that
+     leaves a 14px content box, so an 18-20px mark was laid out from its left
+     edge and sat 2-3px right of centre. These circles centre their own mark. */
+  padding: 0;
   border-radius: 50%;
   border: 1px solid transparent;
   background: transparent;
   color: var(--t2);
+}
+
+.dock-btn svg {
+  display: block;
 }
 
 .dock-btn:hover:not(:disabled) {
@@ -4999,9 +5033,11 @@ h1 {
   color: var(--text);
 }
 
+/* A touch smaller than the 46px it was: the play mark is the tallest thing in
+   the dock's centre column, and the seek bar needed the room above the edge. */
 .dock-btn.primary {
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   background: var(--grad);
   color: #04070d;
   box-shadow: 0 8px 22px -12px rgba(56, 189, 248, 0.9);
@@ -5035,10 +5071,6 @@ h1 {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
-}
-
-.dock-empty-action {
-  flex: none;
 }
 
 /* ---- the full player ---- */
@@ -5129,34 +5161,6 @@ h1 {
   padding-top: 12px;
 }
 
-.segmented {
-  flex: none;
-  align-self: flex-start;
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--s2);
-  border: 1px solid var(--line);
-}
-
-.segment {
-  height: 30px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 550;
-}
-
-.segment.on {
-  background: var(--grad);
-  color: #04070d;
-  font-weight: 650;
-}
-
 .media-body {
   flex: 1;
   min-height: 120px;
@@ -5220,9 +5224,60 @@ h1 {
 .queue-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* The count and the source give way to the switches rather than pushing them
+   off the edge: the line is read once, the switches are pressed. */
+.queue-head .hint {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Shuffle, repeat and DJ beside the queue: the switches that decide what
+   happens when the list runs out belong next to the list they act on. */
+.queue-tools {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.q-tool {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--s2);
+  color: var(--t2);
+  line-height: 1;
+}
+
+.q-tool svg {
+  display: block;
+}
+
+.q-tool:hover:not(:disabled) {
+  background: var(--s3);
+  color: var(--text);
+}
+
+.q-tool[aria-pressed='true'] {
+  background: var(--accent-a);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.q-dj {
   font-size: 13px;
 }
 
@@ -5581,11 +5636,6 @@ kbd {
   height: 46px;
 }
 
-.layout-phone .dock-empty-action,
-.layout-tablet .dock-empty-action {
-  font-size: 12px;
-}
-
 /* A phone has no mouse: nothing may depend on hover, and nothing may rely on
    HTML5 drag events, which touch browsers never fire. */
 @media (pointer: coarse) {
@@ -5829,8 +5879,8 @@ kbd {
 
 .layout-phone .dock-btn.primary,
 .layout-tablet .dock-btn.primary {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
 }
 
 /* The dock is fixed on every width, and `.body` reserves its height, so the
@@ -5859,6 +5909,18 @@ kbd {
   -webkit-backdrop-filter: blur(3px);
   cursor: default;
   animation: fade-in 160ms ease;
+}
+
+/* The backdrop is scenery, not a control. It is a <button> (clicking it closes
+   the player), so the generic button:hover/:active rules outranked the plain
+   class and lit the whole window up the moment the pointer left the sheet. */
+button.player-scrim,
+button.player-scrim:hover:not(:disabled),
+button.player-scrim:active:not(:disabled) {
+  background: rgba(4, 6, 11, 0.72);
+  border: none;
+  padding: 0;
+  transform: none;
 }
 
 @keyframes fade-in {
@@ -6560,7 +6622,9 @@ body.dragging-col .sidebar-resize::after {
   align-items: center;
   gap: 16px;
   height: 100%;
-  padding: 0 2px;
+  /* Air under the seek bar, so it sits above the window edge instead of on it.
+     The smaller play mark in the centre column pays for the height. */
+  padding: 0 2px 8px;
 }
 
 .dock-left {
@@ -6624,7 +6688,9 @@ body.dragging-col .sidebar-resize::after {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
+  /* The sound group and the way into the player are two controls, not one: a
+     2px gap read as a single oddly-shaped button. */
+  gap: 12px;
   min-width: 0;
 }
 
@@ -6769,25 +6835,45 @@ body.dragging-col .sidebar-resize::after {
    groups, with a hairline between them and no shared radius pretending they are
    one control. */
 
-.player.full .transport-views {
+/* The transport's three bundles — filing and the card, info and lyrics, and
+   the source modes — are groups the row wraps as units, so no control is ever
+   left alone on a line of its own when the window narrows. */
+.transport-actions,
+.transport-panes,
+.transport-views {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: none;
+}
+
+.player.full .transport-views {
   margin-left: 6px;
   padding-left: 12px;
   border-left: 1px solid var(--line-2);
 }
 
+/* Bundled buttons are one size, so a group reads as a group rather than as
+   more transport buttons that happen to be next to each other. `padding: 0` is
+   what keeps a 20px mark centred in a 34px button. */
+.player.full .transport-actions .t-btn,
+.player.full .transport-panes .t-btn,
 .player.full .transport-views .t-btn {
   width: 34px;
   height: 34px;
   min-width: 34px;
+  padding: 0;
   border-radius: 9px;
 }
 
-.player.full .transport-views .t-btn[aria-pressed='true'] {
-  background: var(--s3);
-  color: var(--text);
+/* The chosen face of the transport: which version is playing, and which of
+   info/lyrics is open. Both are states, so both are lit. */
+.player.full .transport-views .t-btn[aria-pressed='true'],
+.player.full .transport-panes .t-btn[aria-pressed='true'] {
+  background: var(--accent-a);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  box-shadow: var(--lift), 0 0 16px -6px rgba(56, 189, 248, 0.7);
 }
 
 /* The mode switch keeps its divider only while the row is actually one row. */
@@ -6799,44 +6885,18 @@ body.dragging-col .sidebar-resize::after {
   }
 }
 
-/* ---- the sheet does not react to the pointer -----------------------------
+/* ---- the sheet's stage is always dark ------------------------------------
 
-   Reported twice, so it is written down twice: hovering the open player must
-   not brighten, lift, tint or blur anything. No transition on the sheet's own
-   surface — a transition is how a background change becomes *visible* — and no
-   hover rule may reach it. */
+   The sheet is a dark surface and it stays that dark wherever the pointer is.
+   This used to be enforced by resetting `transform` and `background` on hover —
+   which reset the sheet's centring too, so simply moving the mouse into the
+   player slid it half a screen to the right and dropped its backdrop. */
 
-.player.full,
-.player.full .player-info,
-.player.full .player-meta,
-.player.full .transport,
-.player.full .facts,
-.layout-desktop .player-host.expanded,
-.player-host.expanded {
-  transition: none;
-  animation: none;
-}
-
-.player.full:hover,
-.player.full .player-info:hover,
-.player.full .player-meta:hover,
-.player.full .transport:hover,
-.layout-desktop .player-host.expanded:hover,
-.player-host.expanded:hover {
-  background-color: transparent;
-  filter: none;
-  box-shadow: none;
-  transform: none;
-}
-
-.layout-desktop .player-host.expanded,
-.layout-desktop .player-host.expanded:hover {
+.layout-desktop .player-host.expanded {
   background: #070a12;
-  filter: none;
 }
 
-.player.full,
-.player.full:hover {
+.player.full {
   background: transparent;
 }
 

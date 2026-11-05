@@ -201,6 +201,9 @@ export function App() {
   // wait for a second press.
   const [playToken, setPlayToken] = useState(0)
   const [cardId, setCardId] = useState<number | null>(null)
+  // Opened as the form, not the read view: the player's empty Info and Lyrics
+  // panes ask for what is missing, so they skip the extra press on Edit.
+  const [cardEdit, setCardEdit] = useState(false)
   const [cardPlaylists, setCardPlaylists] = useState<Playlist[]>([])
   // The link-health run lives in its own dialog; its verdict lives here so
   // the rows stay marked while the reader works through the fixes.
@@ -971,8 +974,9 @@ export function App() {
     depth.current = next
   }, [nav.tab, nav.listOpen])
 
-  const openCard = useCallback((track: TrackWithSources) => {
+  const openCard = useCallback((track: TrackWithSources, edit = false) => {
     setCardId(track.id)
+    setCardEdit(edit)
   }, [])
 
   const deleteFromCard = useCallback(
@@ -1202,6 +1206,19 @@ export function App() {
         ? 'playlist'
         : 'all'
 
+  /**
+   * One shuffle switch for the two places it appears — the list header and the
+   * queue — so the two can never disagree about the pass's cycle.
+   */
+  const toggleShuffle = useCallback(() => {
+    setShuffle((on) => !on)
+    // Either way the next pass starts clean, so the first draw after the
+    // toggle is a real choice rather than a leftover.
+    shuffleCycle.current = emptyCycle()
+  }, [])
+
+  const toggleRepeat = useCallback(() => setRepeat((on) => !on), [])
+
   const listColumn = (
     <>
       <ListHeader
@@ -1213,13 +1230,8 @@ export function App() {
         onPlayList={rows.length ? playList : null}
         shuffle={shuffle}
         repeat={repeat}
-        onToggleShuffle={() => {
-          setShuffle((on) => !on)
-          // Either way the next pass starts clean, so the first draw after the
-          // toggle is a real choice rather than a leftover.
-          shuffleCycle.current = emptyCycle()
-        }}
-        onToggleRepeat={() => setRepeat((on) => !on)}
+        onToggleShuffle={toggleShuffle}
+        onToggleRepeat={toggleRepeat}
         djOn={djOn}
         onToggleDj={djAvailable ? toggleDj : null}
         menuItems={listMenu}
@@ -1322,6 +1334,7 @@ export function App() {
     expanded: treeFolders.expanded,
     onToggleFolder: treeFolders.toggleFolder,
     onOpenFolder: treeFolders.openFolder,
+    onExpandAll: treeFolders.expandAll,
     onCollapseAll: treeFolders.collapseAll,
     onSelect: (next: PlaylistSelection) => openList(next),
     onCreateFolder: (name: string, parentId: number | null) =>
@@ -1523,7 +1536,11 @@ export function App() {
           djOn={djOn}
           isDjSuggestion={isDjSuggestion}
           djSeedLabel={djSeedText}
-          onToggleDj={djOn ? toggleDj : null}
+          onToggleDj={djAvailable ? toggleDj : null}
+          shuffle={shuffle}
+          repeat={repeat}
+          onToggleShuffle={toggleShuffle}
+          onToggleRepeat={toggleRepeat}
           onOpenCard={openCard}
         />
       </div>
@@ -1706,6 +1723,7 @@ export function App() {
 
       <TrackCardDialog
         track={cardTrack}
+        startInEdit={cardEdit}
         memberPlaylists={cardPlaylists}
         allPlaylists={api.playlists}
         onClose={() => setCardId(null)}

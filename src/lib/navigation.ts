@@ -84,16 +84,16 @@ export function readNav(raw: string | null): NavState {
   if (!raw) return INITIAL_NAV
   try {
     const parsed = JSON.parse(raw) as Partial<NavState>
-    // `you` is a dialog now, not a place: restoring into it would open the
-    // app behind a modal nobody asked for today.
-    const tab: Tab =
-      parsed.tab === 'playing' || parsed.tab === 'tracklist'
-        ? parsed.tab
-        : 'library'
+    // A launch always lands in the library, with its column open on the left and
+    // the list beside it. `you` is a dialog and the player is a sheet over the
+    // library, so starting inside either is starting behind something nobody
+    // asked for today — and restoring them meant the app could open on an empty
+    // player with the library nowhere in sight, or with its column shut because
+    // that is how the last session was left.
     return {
-      tab: tab === 'tracklist' ? 'library' : tab,
-      listOpen: tab === 'tracklist' || parsed.listOpen === true,
-      sidebarOpen: parsed.sidebarOpen !== false,
+      tab: 'library',
+      listOpen: parsed.tab === 'tracklist' || parsed.listOpen === true,
+      sidebarOpen: true,
     }
   } catch {
     return INITIAL_NAV

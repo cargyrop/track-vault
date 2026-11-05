@@ -43,6 +43,15 @@ type CardPatch = {
 
 interface Props {
   track: TrackWithSources | null
+  /**
+   * Opens the card as the edit form rather than the read view.
+   *
+   * The player's empty Info and Lyrics panes send the reader here to write what
+   * is missing, and making them press Edit first would be a second step for a
+   * request they already made. A track opened any other way (a row, a search
+   * result) still arrives in its read view.
+   */
+  startInEdit?: boolean
   /** Playlists this track is currently in. */
   memberPlaylists: Playlist[]
   /** Every playlist, for the add-to-playlist picker. */
@@ -115,6 +124,7 @@ const emptyDraft = (): Draft => ({
  */
 export function TrackCardDialog({
   track,
+  startInEdit = false,
   memberPlaylists,
   allPlaylists,
   onClose,
@@ -164,14 +174,16 @@ export function TrackCardDialog({
     setMeasured(null)
   }, [])
 
-  // A new track resets the card to its read view; the same track keeps whatever
-  // mode it is in, so saving does not snap the form shut mid-edit.
+  // A new track resets the card; the same track keeps whatever mode it is in,
+  // so saving does not snap the form shut mid-edit. `startInEdit` is part of the
+  // reset because it is the caller saying "open this one as a form" — the
+  // lyrics and info panes do, the tracklist rows do not.
   useEffect(() => {
     if (!track) return
     resetDrafts(track)
-    setEditing(false)
+    setEditing(startInEdit)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track?.id])
+  }, [track?.id, startInEdit])
 
   const memberIds = new Set(memberPlaylists.map((p) => p.id))
   const candidates = allPlaylists.filter((p) => !memberIds.has(p.id))

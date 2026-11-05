@@ -73,5 +73,20 @@ export function useFolderExpansion(folders: PlaylistFolder[] | null) {
     setExpanded((current) => (current.size ? new Set<number>() : current))
   }, [])
 
-  return { expanded, toggleFolder, openFolder, collapseAll }
+  /**
+   * Opens every folder at once — the other half of the same button, which shuts
+   * everything when anything is open and opens everything when nothing is.
+   *
+   * `seen` is left alone here too: these folders are not new, so nothing may
+   * spring open by itself afterwards.
+   */
+  const expandAll = useCallback(() => {
+    setExpanded((current) => {
+      if (folders === null || !folders.length) return current
+      if (current.size === folders.length) return current
+      return new Set(folders.map((folder) => folder.id))
+    })
+  }, [folders])
+
+  return { expanded, toggleFolder, openFolder, collapseAll, expandAll }
 }

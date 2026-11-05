@@ -13,6 +13,54 @@
  * path changes with playback, not the same mark used twice.
  */
 
+/** Two crossing arrows: play this list in a different order. */
+export function ShuffleIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">
+      <path
+        d="M4 7h3.2l3 5m0 0 3 5H19m0 0 2.5-2.5M19 17l2.5 2.5M4 17h3.2l2.4-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.8 7H19m0 0 2.5 2.5M19 7l2.5-2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** A loop with arrowheads: when the end is reached, start again. */
+export function RepeatIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" focusable="false">
+      <path
+        d="M5 11V9.4A3.4 3.4 0 0 1 8.4 6h10M15 3.4 18.4 6 15 8.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M19 13v1.6A3.4 3.4 0 0 1 15.6 18h-10M9 15.4 5.6 18 9 20.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /** A triangle, drawn rather than typed, so it matches the transport's marks. */
 export function PlayIcon({ size = 13 }: { size?: number }) {
   return (

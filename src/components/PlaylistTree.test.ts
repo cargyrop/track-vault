@@ -47,6 +47,7 @@ const base: Props = {
   expanded: new Set<number>(),
   onToggleFolder: () => undefined,
   onOpenFolder: () => undefined,
+  onExpandAll: () => undefined,
   onCollapseAll: () => undefined,
   onSelect: () => undefined,
   onCreateFolder: () => undefined,
@@ -111,23 +112,30 @@ describe('PlaylistTree', () => {
     mounted.unmount()
   })
 
-  it('offers one button that shuts every folder', async () => {
-    // Nothing is open, so there is nothing to shut: the button says so by being
-    // disabled rather than by disappearing, which would move the two buttons
-    // either side of it.
-    const idle = await mount()
-    const shut = idle.tool('Collapse all folders')
-    expect(shut).toBeTruthy()
-    expect(shut?.disabled).toBe(true)
+  it('offers one button that shuts or opens every folder', async () => {
+    // Nothing is open, so the one button offers the other direction: it opens
+    // everything, and its label says so rather than staying a dead control.
+    let opened = 0
+    const idle = await mount({ onExpandAll: () => (opened += 1) })
+    const expand = idle.tool('Expand all folders')
+    expect(expand).toBeTruthy()
+    expect(expand?.disabled).toBe(false)
+    expand?.click()
+    await waitFor(() => (opened === 1 ? true : null))
     idle.unmount()
 
-    // Open a folder and it is clickable, and one press is all it takes.
+    // With a folder open it shuts everything instead, and one press is enough.
     let asked = 0
-    const mounted = await mount({ expanded: new Set([1]), onCollapseAll: () => (asked += 1) })
+    const mounted = await mount({
+      expanded: new Set([1]),
+      onCollapseAll: () => (asked += 1),
+      onExpandAll: () => (opened += 1),
+    })
     const button = mounted.tool('Collapse all folders')
     expect(button?.disabled).toBe(false)
     button?.click()
     await waitFor(() => (asked === 1 ? true : null))
+    expect(opened).toBe(1)
     mounted.unmount()
   })
 
