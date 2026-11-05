@@ -1,0 +1,6946 @@
+/* ============================================================================
+   TrackVault — design tokens
+   ----------------------------------------------------------------------------
+   One dark theme, built as layers rather than as a single background colour.
+
+   The previous palette was three greys and one blue, which meant every box on
+   screen was the same value and depth had to be faked with borders alone. The
+   tokens below separate the job into three: --void/--bg for the window, --s1
+   to --s3 for surfaces sitting on it, and --line/--line-2 for the hairlines
+   between them. Each step up in --sN is also a step up in elevation, so a card
+   on a panel reads as raised without needing a shadow to do it.
+
+   Accents: cyan -> indigo -> violet, used as one gradient. The colour is only
+   ever a *signal* — the thing being played, the chip that is on, the filled
+   play button — never a decoration, so the eye always lands on state first.
+
+   There are no web fonts here on purpose: the app's restrictive CSP is `default-src
+   'self'`, so a font from a CDN would be blocked in the packaged app while
+   working in the browser. Everything below is a system stack.
+   ========================================================================== */
+
+:root {
+  /* --- elevation ------------------------------------------------------- */
+  --void: #04060b;
+  --bg: #070a12;
+  --s1: #0b101b;
+  --s2: #0f1624;
+  --s3: #151e30;
+  --s4: #1c2739;
+
+  /* Hairlines. Cool-tinted rather than neutral grey so they sit inside the
+     palette instead of on top of it. */
+  --line: rgba(140, 175, 255, 0.1);
+  --line-2: rgba(140, 175, 255, 0.2);
+  --line-3: rgba(140, 175, 255, 0.34);
+
+  /* --- text ------------------------------------------------------------ */
+  --text: #eaf1ff;
+  --t2: #a7b6d0;
+  --muted: #6e7f9c;
+  --faint: #4d5b73;
+
+  /* --- accent ---------------------------------------------------------- */
+  --cyan: #22d3ee;
+  --indigo: #818cf8;
+  --violet: #a855f7;
+  --accent: #38bdf8;
+  --grad: linear-gradient(135deg, #22d3ee 0%, #818cf8 52%, #c084fc 100%);
+  --grad-soft: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.16),
+    rgba(129, 140, 248, 0.14) 55%,
+    rgba(192, 132, 252, 0.14)
+  );
+  --accent-a: rgba(56, 189, 248, 0.14);
+  --accent-line: rgba(56, 189, 248, 0.4);
+  --danger: #fb7185;
+  --ok: #34d399;
+
+  /* --- shape ----------------------------------------------------------- */
+  --r-xs: 7px;
+  --r-sm: 10px;
+  --r: 13px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  /* --- depth ----------------------------------------------------------- */
+  /* A top highlight on every raised surface. One pixel of light at the top
+     edge is what makes a dark box read as a physical object rather than a
+     hole; without it, dark-on-dark loses its edges entirely. */
+  --lift: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-2: 0 10px 30px -12px rgba(0, 0, 0, 0.75);
+  --sh-3: 0 30px 70px -24px rgba(0, 0, 0, 0.9);
+  --sh-pop: 0 20px 50px -16px rgba(0, 0, 0, 0.85);
+  --glow: 0 0 0 1px rgba(56, 189, 248, 0.22), 0 10px 34px -12px rgba(56, 189, 248, 0.4);
+
+  /* --- type ------------------------------------------------------------ */
+  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'JetBrains Mono', Menlo,
+    Consolas, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--text);
+  font: 14px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Text selection in a dark UI defaults to a blue that clashes with the accent.
+   Tinted to match, and never on the video surface. */
+::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #fff;
+}
+
+/* --------------------------------------------------------------- scrollbars
+   Thin, cool, and only visible on hover of their own scroll area — the default
+   Chromium bar is a thick grey slab that draws more attention than the content
+   it is scrolling.
+
+   The standard `scrollbar-width`/`scrollbar-color` pair is deliberately NOT set
+   on `*` below. Chromium ignores every `::-webkit-scrollbar` pseudo-element once
+   the element declares `scrollbar-width`, and one of the rules further down
+   relies on those pseudo-elements to hide the horizontal bar under the lyrics.
+   The standard properties are applied only where the vendor pseudo-elements do
+   not exist, which in practice means Firefox. */
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--s4) transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--s4);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line-3);
+  background-clip: content-box;
+}
+
+/* ------------------------------------------------------------ form controls
+   Inputs are the one place a flat fill reads as unfinished, so they get a
+   recessed look: darker than the panel behind them, plus an inner shadow, so
+   they read as *into* the surface rather than painted onto it. */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 7px 11px;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease,
+    color 140ms ease, transform 90ms ease;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--line-2);
+  background: var(--s3);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--line-2);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--faint);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Selects carry a drawn chevron: the native one is a system glyph that varies
+   by platform and, on Windows, sits on the wrong side of the padding. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+select option {
+  background: var(--s3);
+  color: var(--text);
+}
+
+input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--muted);
+  mask: linear-gradient(45deg, transparent 44%, #000 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, #000 44% 56%, transparent 56%);
+  cursor: pointer;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------- the shell */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* Mobile browser chrome (URL bar) makes 100vh taller than the visible
+     area; dynamic viewport units follow it instead. Kept as a second
+     declaration so older browsers fall back to the first. */
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.boot {
+  padding: 48px;
+  max-width: 640px;
+}
+
+/* ------------------------------------------------------------------ topbar
+   Frosted rather than solid: the rail scrolls underneath nothing today, but a
+   translucent bar keeps the window feeling like one surface instead of a stack
+   of opaque rectangles. */
+
+.topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 58px;
+  padding: 0 16px;
+  background: rgba(8, 12, 20, 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--lift);
+  position: relative;
+  z-index: 10;
+}
+
+/* The mark, the wordmark, and a hairline between them and the rest of the bar.
+   `letter-spacing` on an all-caps name is the whole trick: it gives the word
+   some geometry at 11px, where tracking is the only way to make small caps look
+   deliberate rather than shrunken. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-mark {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--grad);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 6px 18px -6px rgba(56, 189, 248, 0.55);
+  color: #06080f;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brand-text h1 {
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+/* The subtitle is what makes the bar feel like a status strip rather than a
+   title: it says what the app *is*, in the quietest possible voice. */
+.brand-sub {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  line-height: 1.4;
+}
+
+.topbar-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  flex: none;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* One shape for every action in the bar: icon and word on a single centred
+   row, on the same quiet outlined button. Without the flex row the svg is an
+   inline box on the text baseline, which is what left the `+` floating above
+   the words. None of them is filled — five buttons at the same weight read as
+   a row of tools, which is what they are. */
+.topbar-actions .topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--t2);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.topbar-actions .topbar-btn:hover {
+  color: var(--text);
+  background: var(--s3);
+  border-color: var(--line-2);
+}
+
+.topbar-actions .topbar-btn:active {
+  transform: translateY(1px);
+}
+
+/* The mark stays a step quieter than the word, so five buttons in a row read
+   as five labels rather than five icons. */
+.topbar-actions svg {
+  display: block;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+}
+
+.topbar-actions .topbar-btn:hover svg {
+  color: var(--text);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------ buttons
+   Three levels, each a step further from the surface: solid gradient for the
+   one thing you are invited to do, a filled panel for ordinary controls, and a
+   borderless ghost for the ones that are only worth reaching for deliberately. */
+
+.btn-primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #05070d;
+  font-weight: 600;
+  box-shadow: 0 6px 20px -8px rgba(56, 189, 248, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--grad);
+  border-color: transparent;
+  box-shadow: 0 8px 26px -8px rgba(56, 189, 248, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--t2);
+}
+
+.ghost:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--s3);
+  border-color: var(--line);
+}
+
+.danger:hover:not(:disabled) {
+  color: var(--danger);
+  background: rgba(251, 113, 133, 0.1);
+  border-color: rgba(251, 113, 133, 0.3);
+}
+
+/* The point-of-no-return button: red rather than gradient, so the most
+   destructive action in the window never wears the inviting fill. Quiet at
+   rest, unmistakable on purpose — the dialog's warning does the talking and
+   this only agrees. */
+.btn-danger {
+  background: rgba(251, 113, 133, 0.12);
+  border-color: rgba(251, 113, 133, 0.45);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(251, 113, 133, 0.22);
+  border-color: rgba(251, 113, 133, 0.65);
+  color: #fecdd3;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.file-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Three columns, two of them optional: the rail of tracks on the left, the
+   player in the middle, and the lyrics on the right only while that panel is
+   open. The open state is a modifier on the whole grid rather than a third
+   column that is always there and usually zero wide, which would leave a dead
+   strip and a border down the side of the player for nothing. */
+.layout {
+  flex: 1;
+  display: grid;
+  /* The rail's width is reader-controlled (drag its right edge) and arrives
+     as --rail-col; 380px is the default it falls back to. The rail carries a
+     34px thumbnail, a three-button action gutter and a duration column on
+     every row, and each of those is permanently reserved width — the rail
+     pays for its own contents. */
+  grid-template-columns: var(--rail-col, 380px) 11px minmax(0, 1fr);
+  min-height: 0;
+  /* Without this the grid children can force a horizontal scrollbar. */
+  overflow: hidden;
+}
+
+.layout.lyrics-open {
+  /* The two reader-controlled measurements in the layout; the panels set them. */
+  grid-template-columns:
+    var(--rail-col, 380px) 11px minmax(0, 1fr) var(--lyrics-col, 320px);
+}
+
+/* The left rail: which view, how to narrow it, and the list. One column, so
+   "where is my music" has a single answer, and so the search panel can open
+   above the list instead of taking a column away from the player. */
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--s1);
+  border-right: 1px solid var(--line);
+}
+
+/* The gutter splitter between the rail and the player: its own grid column,
+   so it sits beside the tracklist's scrollbar instead of on top of it. The
+   grip lights up before the cursor arrives; `touch-action` is what lets a
+   finger drag it instead of scrolling whatever is beside it. */
+.rail-resize {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+.rail-resize::after {
+  content: '';
+  width: 3px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--line-3);
+  transition: background 140ms ease, height 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rail:hover .rail-resize::after,
+.rail-resize:hover::after,
+.rail-resize:focus-visible::after {
+  background: var(--accent);
+  height: 84px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+}
+
+.rail-resize:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The rail's panel: the filter panel and the folder tree are one object — a
+   full-width header control and the body it opens, in a single bordered card
+   that floats inset from the column's edges rather than spanning it as a strip.
+   One set of classes for both, so the two cannot end up shaped differently. */
+.rail-panel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  margin: 10px 14px 0;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--lift);
+  overflow: hidden;
+}
+
+/* The only way into the panel. It stays a control rather than caption text: it
+   fills the header, brightens under the cursor, and turns its chevron over when
+   the panel is open. */
+.rail-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--t2);
+  box-shadow: none;
+}
+
+.rail-panel-toggle:hover {
+  background: var(--s3);
+  color: var(--text);
+}
+
+.rail-panel.open .rail-panel-toggle {
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+
+.rail-panel-toggle .icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.rail-panel-toggle[aria-expanded='true'] .icon {
+  color: var(--accent);
+}
+
+/* Pushed to the far end so the row reads label-left, state-right. */
+.rail-panel-toggle .chev {
+  margin-left: auto;
+  flex: none;
+  color: var(--muted);
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rail-panel-toggle[aria-expanded='true'] .chev {
+  transform: rotate(180deg);
+}
+
+/* The body: capped by whoever set the height (inline, in the app) and
+   independently scrollable, so opening a panel narrows the list below it
+   instead of pushing it off screen. */
+.rail-panel-area {
+  flex: none;
+  min-height: 0;
+  animation: slide-down 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* The playlist controls are what the list below is showing, not a way of
+   narrowing it, so they stay visible when the search panel is shut. */
+.rail > .playlist-bar {
+  flex: none;
+  max-height: 45%;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 12px 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.list-area {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+/* Heading plus its own close button, shared by the two collapsible panels so
+   they are dismissed the same way. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.panel-close {
+  flex: none;
+  padding: 2px 8px;
+  line-height: 1.3;
+}
+
+/* -------------------------------------------------------------- track list */
+
+.list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.list-head h2 {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.count {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* The list's total running time, beside its track count. Its own span so the
+   count's colour stays quiet while this one can be read. */
+.count-total {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The library-wide action lives beside the track count it reports on. */
+.list-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xs);
+  color: var(--t2);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  padding: 5px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.14s ease, color 0.14s ease;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.ghost-btn:disabled {
+  color: var(--faint);
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* Progress for the backfill run. The bar is the only thing that moves, so the
+   track list underneath stays legible instead of being replaced by log text. */
+.backfill-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 0 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.backfill-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.backfill-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--grad);
+  transition: width 0.2s ease;
+}
+
+/* The same line once the run has ended: what the lookup managed to do, with a
+   dismiss at the far end. The summary takes the room the progress bar had, so
+   both states put their text on exactly the same left edge. */
+.backfill-status.done > span:first-child {
+  flex: 1;
+}
+
+.backfill-status.done .icon-btn {
+  width: 18px;
+  height: 18px;
+}
+
+/* Where both lookups report: under the top bar, above the library. They used to
+   sit inside the list, under its header — a screen away from the bar that
+   starts a lookup, and they scrolled away with the rows. Here they are app
+   status rather than list chrome: the library and the player both see them, and
+   neither pane's scroll takes the Stop button out of reach. Slim and muted
+   because this is a background job; it should be readable at a glance and
+   ignorable the rest of the time. */
+.lookup-status {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px 2px;
+}
+
+.lookup-status .backfill-status {
+  margin: 0;
+}
+
+.track-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.track-list li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--r-sm);
+  /* No reserved grip column: every row in every view starts flush at the
+     same left edge. The reorder handle is a pure hover overlay (see below)
+     rather than layout, so playlists, folders and library views align. */
+  /* The left rail, which is how the selected row is marked. A bar on the edge
+     reads as a position marker rather than as a colour, so it survives the
+     fact that the accent itself is already used for the tint. */
+  transition: background 130ms ease;
+}
+
+.track-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  border-radius: 999px;
+  background: var(--grad);
+  transform: translateY(-50%);
+  transition: height 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.track-list li:hover {
+  background: var(--s2);
+}
+
+.track-list li.selected {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.05));
+}
+
+.track-list li.selected::before {
+  height: 60%;
+}
+
+/* Cover art inline in the list. This is the single biggest change to how the
+   rail reads: a column of names is a list, a column of thumbnails is a shelf,
+   and the picture is the fastest way to recognise a record you did not look up
+   the name of. */
+.t-cover {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  margin: 5px 2px 5px 6px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--s3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Stand-in for a track with no art: a gradient tile rather than a grey box, so
+   a library of art-less records still has rhythm down the list. */
+.t-cover-ph {
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.35);
+  background: var(--grad-soft);
+  border: 1px solid var(--line);
+}
+
+.track-list li.selected .t-cover {
+  box-shadow: 0 0 0 1px var(--accent-line), 0 4px 14px -6px rgba(56, 189, 248, 0.7);
+}
+
+.row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 8px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.row-main:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+}
+
+.t-title {
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 130ms ease;
+}
+
+.track-list li:hover .t-title {
+  color: #fff;
+}
+
+.t-artist {
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The running time, in its own right-aligned column.
+   `tabular-nums` on monospace is what keeps the digits from shifting sideways
+   as the numbers change while a track is being enriched — proportional digits
+   would make the whole column twitch. The em dash for an unknown length is
+   styled like the rest of the muted text rather than coloured as a warning: a
+   missing length is the normal state, not a problem. */
+.t-duration {
+  flex: none;
+  align-self: center;
+  min-width: 34px;
+  margin-right: 8px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+  transition: color 200ms ease;
+}
+
+.track-list li:hover .t-duration {
+  color: var(--t2);
+}
+
+.track-list li.selected .t-duration {
+  color: #a5c9e8;
+}
+
+.track-list li.selected .t-title {
+  color: #fff;
+}
+
+.track-list li.selected .t-artist {
+  color: #a5c9e8;
+}
+
+/* The three row actions live in a fixed-width gutter so the titles in the list
+   above and below stay on the same left edge whether or not a row is hovered —
+   without it the whole list would shuffle sideways under the cursor. The same
+   applies to the duration column: it is always present and always the same
+   width, so a row appearing or disappearing never reflows its neighbours. */
+.row-actions {
+  display: flex;
+  gap: 2px;
+  padding-right: 6px;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 130ms ease, transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.track-list li:hover .row-actions,
+.track-list li:focus-within .row-actions,
+.track-list li.selected .row-actions {
+  opacity: 1;
+  transform: none;
+}
+
+/* Small square icon buttons rather than bare glyphs: at 24px a text character
+   has no room to be aimed at, so these get a target. */
+.row-actions .ghost {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 12px;
+  border-radius: var(--r-xs);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.row-actions .ghost:hover:not(:disabled) {
+  background: var(--s4);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+/* ----------------------------------------------------------------- filters */
+
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.facets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.facets .label,
+.facets > label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  background: var(--s3);
+  border: 1px solid var(--line);
+  color: var(--t2);
+  white-space: nowrap;
+  box-shadow: var(--lift);
+}
+
+/* The genre toggle on, in the same vocabulary as the play button: gradient fill
+   for "this one is selected", because selection is state and state is accent. */
+.chip.toggle.on {
+  background: var(--grad);
+  border-color: transparent;
+  color: #05070d;
+  font-weight: 600;
+  box-shadow: 0 4px 14px -6px rgba(56, 189, 248, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.tally {
+  font-family: var(--mono);
+  font-size: 10px;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+/* --------------------------------------------------------------- playlists */
+
+.playlist-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.playlist-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.playlist-entries li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playlist-entries li button:first-child {
+  flex: 1;
+  text-align: left;
+  background: var(--s2);
+  border-color: var(--line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* ============================================================================
+   The player
+   ----------------------------------------------------------------------------
+   The old player was a 720px column of grey boxes pinned to the top of a very
+   large empty area, so the window had a hole in the middle of it. The console
+   below fixes that with two changes rather than by filling the space with more
+   interface: the stage behind it is no longer flat (a grid and two soft light
+   sources, so the empty area reads as depth), and the console itself is a single
+   raised object instead of three separate cards.
+
+   The console sits at the TOP of the stage, not centred in it. Centring looked
+   deliberate for a moment and then wrong on every real track: the seek bar and
+   the track it belongs to ended up in the middle of the window, so the rail's
+   list, the player and the lyrics no longer lined up along a common edge.
+   Top-aligned, every column starts on the same line, and the picture of what is
+   playing stays in one predictable place no matter how tall it is. The space
+   below is given back deliberately, by the stage lighting rather than by more
+   interface.
+   ========================================================================== */
+
+.player-area {
+  position: relative;
+  overflow: auto;
+  /* 14px at the top, not a round 24: that is the rail's own top margin (see
+     .rail-tabs), so the console's top edge lands on exactly the same line as
+     the top of the view switcher and the first track row. Aligned columns are
+     the point of putting the console at the top rather than the middle, so the
+     padding is set from the rail rather than picked for looks. */
+  padding: 14px 24px 28px;
+  min-width: 0;
+  display: flex;
+  /* Column, so the DJ tray stacks under the console when it is on. For the
+     console alone this reads exactly as before: centred horizontally, from
+     the top, with the same air around it. */
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  background: var(--bg);
+}
+
+/* The light behind the console. Two blurred colour fields offset from each
+   other, which is what stops a large dark area from reading as "unfinished":
+   there is a visible falloff across it, so the eye reads distance instead of
+   emptiness.
+
+   The fields sit in the upper third rather than being spread across the whole
+   area. They are there to back the console and keep the space beneath it from
+   looking dead, so lighting the region the console actually occupies is what
+   makes the remaining room read as air around the object instead of as a gap
+   below it.
+
+   `inset: 0`, not a negative one. This pseudo-element is absolutely positioned
+   inside `.player-area`, which scrolls, so a box that hangs outside its own
+   padding box becomes part of the scrollable overflow — a negative inset here
+   gave the stage scrollbars it had no content for. The gradients are soft and
+   already fade to transparent at their edges, so nothing is lost by keeping
+   the layer inside the box. */
+.player-area::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 24% 6%, rgba(34, 211, 238, 0.16), transparent 68%),
+    radial-gradient(46% 34% at 82% 34%, rgba(168, 85, 247, 0.15), transparent 70%),
+    radial-gradient(32% 22% at 58% 0%, rgba(59, 130, 246, 0.1), transparent 72%),
+    radial-gradient(52% 40% at 50% 108%, rgba(56, 189, 248, 0.07), transparent 72%);
+}
+
+/* A measurement grid, faded out towards the edges. Purely texture, and kept at
+   4% opacity so it is felt rather than seen — the point is to give the large
+   dark area a sense of scale, not to draw a chart on it. Masked towards the top
+   so it reads strongest right behind the console. */
+.player-area::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(130, 180, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(130, 180, 255, 0.045) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 68% 46% at 50% 22%, #000 0%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 68% 46% at 50% 22%, #000 0%, transparent 80%);
+}
+
+.player-area > * {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  /* Wide enough for the whole transport on one line, the three view toggles
+     included, with room for the hero's artwork and text side by side. */
+  max-width: 880px;
+}
+
+/* The station waiting under the console: what the DJ drafted, in draft order.
+   A quieter card than the console — it is read, not performed on — with the
+   same rows as the tracklist so a pick reads like the library it came from. */
+.dj-tray {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: rgba(15, 22, 38, 0.6);
+  padding: 12px 14px;
+}
+
+.dj-tray-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dj-tray-head h2 {
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.dj-seed {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dj-tray-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.dj-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.dj-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--r-sm);
+}
+
+.dj-list li:hover {
+  background: var(--s2);
+}
+
+.dj-remove {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+/* One raised object rather than a stack of three. The console is the only
+   element in the window allowed this much shadow, which is what makes it the
+   focal point without needing to be bigger than everything else. */
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: var(--r-xl);
+  background: linear-gradient(180deg, rgba(21, 30, 48, 0.72), rgba(11, 16, 27, 0.72));
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid var(--line);
+  box-shadow: var(--lift), var(--sh-3);
+}
+
+/* Nothing is playing: the stage is already atmospheric, so the empty state only
+   needs to say so quietly rather than fill the hole. */
+.player.empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  min-height: 260px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.player.empty p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+/* ----------------------------------------------------------- track info
+   Artwork on the left at a size worth looking at, text beside it, and the
+   YouTube button anchored into the corner opposite the art so a long note or a
+   wrapped genre row can never run underneath it. */
+
+.player-info {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  position: relative;
+}
+
+.player-info.has-source .player-meta {
+  /* Keeps track text clear of the YouTube button in the bottom-right corner.
+     Only applied when there is a source to open, so a track without one does
+     not carry an indent for a button that isn't there. */
+  padding-right: 46px;
+}
+
+.player-info img,
+.player-info .cover-placeholder {
+  width: 132px;
+  height: 132px;
+  border-radius: var(--r);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--s3);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--line-2);
+}
+
+.player-info .cover-placeholder {
+  font-size: 40px;
+  color: rgba(255, 255, 255, 0.4);
+  background: var(--grad-soft);
+}
+
+.player-meta {
+  min-width: 0;
+  flex: 1;
+  padding-top: 2px;
+}
+
+/* "Now playing" above the title. The label is what turns a metadata block into
+   a status readout, and it is set in the same caps treatment as every other
+   small heading in the app. */
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 7px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* The DJ badge, inline in the status line so it costs no extra row: the
+   Up-next dialog is gone, so a drafted pick needs a trace of why it plays.
+   Normal casing inside the uppercase status, truncating instead of wrapping. */
+.now-playing {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.dj-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.dj-badge-mark {
+  color: var(--accent);
+}
+
+.dj-badge-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.dj-badge-off {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+/* Three bars that only animate while audio is actually playing. A pulse that
+   runs on a paused track would be a lie about the state of the machine. */
+.eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.eq span {
+  width: 2px;
+  border-radius: 999px;
+  background: var(--grad);
+  animation: eq 900ms ease-in-out infinite;
+}
+
+.eq span:nth-child(1) {
+  height: 40%;
+  animation-delay: 0ms;
+}
+.eq span:nth-child(2) {
+  height: 90%;
+  animation-delay: 160ms;
+}
+.eq span:nth-child(3) {
+  height: 60%;
+  animation-delay: 320ms;
+}
+
+.eq.off span {
+  animation: none;
+  height: 22%;
+  opacity: 0.45;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.player-meta h2 {
+  margin: 0 0 3px;
+  font-size: 25px;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-wrap: balance;
+}
+
+.player-meta .artist {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--t2);
+}
+
+/* Album and year, set as label/value pairs on a mono scale so they read as
+   reference data rather than as another sentence of prose. */
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+.facts dt {
+  color: var(--faint);
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  padding-top: 1px;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--t2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-meta .chips {
+  margin: 11px 0 0;
+}
+
+/* Opens whichever source is playing on YouTube. */
+/* The player's corner button: the way into the whole record rather than out to
+   one of its links. Kept the same size and weight the YouTube shortcut had, so
+   the corner still reads as one deliberate control. */
+.track-card-btn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-2);
+  background: var(--s3);
+  color: #fff;
+  box-shadow: var(--lift), var(--sh-1);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.track-card-btn:hover:not(:disabled) {
+  background: var(--s4);
+  border-color: var(--line-3);
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------- sliders
+   Styled by hand rather than with `accent-color`, because the native control
+   gives no way to make the *filled* portion read as the accent while the empty
+   portion recedes — and that contrast is the whole point of a seek bar.
+
+   `--progress` is set inline by the component on every change. */
+
+.seek,
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+
+.seek::-webkit-slider-runnable-track,
+.volume-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  /* The unfilled part is not decoration — at 8% white it vanished into the
+     console entirely and the seek bar read as "no scrubber here" before
+     playback had started, which is exactly when people look for it. */
+  background: linear-gradient(
+    to right,
+    var(--cyan) 0%,
+    var(--indigo) var(--progress, 0%),
+    rgba(160, 190, 255, 0.16) var(--progress, 0%),
+    rgba(160, 190, 255, 0.16) 100%
+  );
+}
+
+.seek::-moz-range-track,
+.volume-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(160, 190, 255, 0.16);
+}
+
+.seek::-moz-range-progress,
+.volume-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--cyan), var(--indigo));
+}
+
+.seek::-webkit-slider-thumb,
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.16), 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: box-shadow 150ms ease, transform 120ms ease;
+}
+
+.seek::-moz-range-thumb,
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.16), 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* The halo grows on hover so the grab target announces itself without changing
+   size, which would make the row reflow under the pointer. */
+.seek:hover::-webkit-slider-thumb,
+.volume-slider:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 7px rgba(56, 189, 248, 0.2), 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.seek:hover::-moz-range-thumb,
+.volume-slider:hover::-moz-range-thumb {
+  box-shadow: 0 0 0 7px rgba(56, 189, 248, 0.2), 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.seek:active::-webkit-slider-thumb,
+.volume-slider:active::-webkit-slider-thumb {
+  transform: scale(1.18);
+}
+
+.seek:disabled::-webkit-slider-thumb,
+.volume-slider:disabled::-webkit-slider-thumb {
+  background: var(--faint);
+  box-shadow: none;
+}
+
+.seek:disabled::-webkit-slider-runnable-track,
+.volume-slider:disabled::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+.progress-row .seek {
+  flex: 1;
+  min-width: 0;
+}
+
+.time {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 46px;
+}
+
+.progress-row .time:last-child {
+  text-align: right;
+}
+
+/* Volume sits inline with the mute button. Flexible rather than fixed: the view
+   toggles share this line, so the slider yields a little width instead of
+   pushing them onto their own row. */
+.volume-slider {
+  flex: 0 1 96px;
+  min-width: 56px;
+  height: 18px;
+}
+
+/* --------------------------------------------------------------- transport
+   Three tiers inside one row: one filled gradient button for the thing you came
+   here to do, quiet raised squares for everything else, and a recessed track
+   for the view switches. Differentiating by weight is what stops eight buttons
+   of identical appearance from reading as a form. */
+
+.transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  /* Tighter than the default now that eight controls share the line. */
+  background: rgba(4, 6, 11, 0.45);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  /* The volume slider needs room; wrap rather than overflow on narrow columns. */
+  flex-wrap: wrap;
+}
+
+.t-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--r);
+  background: var(--s3);
+  border: 1px solid var(--line);
+  color: var(--t2);
+  box-shadow: var(--lift), var(--sh-1);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease,
+    box-shadow 140ms ease, transform 100ms ease;
+}
+
+.t-btn:hover:not(:disabled) {
+  background: var(--s4);
+  border-color: var(--line-2);
+  color: #fff;
+  box-shadow: var(--lift), 0 8px 20px -10px rgba(0, 0, 0, 0.9);
+}
+
+.t-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.t-btn svg {
+  display: block;
+  flex: none;
+}
+
+/* The one control that gets the accent fill. It is also the only wide one, so
+   it is findable by shape alone before you read the label on it. */
+.t-btn.primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #05070d;
+  min-width: 128px;
+  font-weight: 650;
+  box-shadow: 0 10px 28px -10px rgba(56, 189, 248, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.t-btn.primary:hover:not(:disabled) {
+  background: var(--grad);
+  color: #05070d;
+  box-shadow: 0 14px 34px -10px rgba(56, 189, 248, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.t-label {
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
+}
+
+/* The speaker is drawn rather than typed, so it is pure white like the YouTube
+   mark instead of the yellow emoji the 🔊/🔇 glyphs rendered as. */
+.t-btn.volume-btn {
+  color: var(--t2);
+}
+
+/* The transport's two groups (main controls, then everything else) lay out as
+   one row on wide screens: `display: contents` dissolves the wrappers, so the
+   buttons flex exactly as if the grouping were not there. Narrow screens stack
+   the groups into two centred rows instead (see the single-pane query). */
+.transport-main,
+.transport-modes {
+  display: contents;
+}
+
+/* The view toggles — what you see rather than what plays — at the right end,
+   drawn as icons so they are the same objects as the transport buttons beside
+   them. Grouped so that when the row is too narrow and wraps, they wrap
+   together: one of them alone on a second line reads as a mistake, a row of
+   three reads as a corner. Their own recessed track makes them read as view
+   switches rather than as more transport buttons. */
+.view-toggles {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--r);
+  background: rgba(4, 6, 11, 0.55);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.view-toggles .t-btn {
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--muted);
+}
+
+.view-toggles .t-btn:hover:not(:disabled) {
+  background: var(--s3);
+  border-color: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+
+/* Filled while in effect, the same way the primary play button is. */
+.view-toggles .t-btn[aria-pressed='true'] {
+  background: var(--s4);
+  border-color: var(--line-2);
+  color: var(--accent);
+  box-shadow: var(--lift), 0 0 16px -6px rgba(56, 189, 248, 0.7);
+}
+
+.live-mark {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+/* ---------------------------------------------------- video surface + fullscreen */
+
+.surface {
+  position: relative;
+  background: #000;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  box-shadow: var(--sh-2);
+  /* The player column is a flex stack, so without this the surface is squashed
+     vertically and its 16:9 is lost, leaving black bars beside the video. */
+  flex: none;
+}
+
+/* Centres the video frame and scales it to fit the surface.
+   YouTube's IFrame API writes the frame size onto the iframe as *inline*
+   styles, which beat any stylesheet rule, so the frame is created at one fixed
+   logical size and scaled here instead. Without this the frame kept its
+   creation size and was clipped by the surface's `overflow: hidden`, which is
+   what cut the picture off and left it small in the corner in fullscreen. */
+.yt-frame-fit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1280px;
+  height: 720px;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+/* The YouTube wordmark and title/channel overlay are drawn INSIDE the
+   cross-origin iframe, so no stylesheet here can style them away. They were
+   previously covered by a corner mask, but the frame is now `pointer-events:
+   none` (see .yt-frame-fit), so YouTube never receives hover and never draws
+   that overlay at all — the mask is no longer needed and was removed. */
+
+/* Maximized mode: a fixed overlay covering the viewport. Works even when the
+   browser refuses native fullscreen, and is what makes the video actually
+   watchable from a narrow sidebar. */
+.surface.maximized {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  border: 0;
+  border-radius: 0;
+  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
+  box-shadow: none;
+  /* The card is 16:9 to match the video; fullscreen is free to use the whole
+     screen and letterbox the frame itself instead. */
+  aspect-ratio: auto;
+}
+
+/* Fullscreen control bar.
+   Sits at the bottom of the maximized surface. The regular transport is behind
+   it while maximized, so these controls exist only here; outside fullscreen the
+   bar is not rendered at all.
+
+   `show`/`hide` differ only in opacity and pointer-events, so the transition is
+   a plain fade rather than a reflow. It must re-enable pointer events when
+   shown, otherwise the fade would be decorative and the bar unclickable. */
+.fs-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 40px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* A gradient rather than a solid bar, so the picture stays readable. */
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0));
+  transition: opacity 220ms ease;
+}
+
+.fs-hud.show {
+  opacity: 1;
+}
+
+.fs-hud.hide {
+  opacity: 0;
+  /* Invisible, so it must not swallow clicks meant for the video. */
+  pointer-events: none;
+}
+
+.fs-hud-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-btn {
+  flex: none;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-sm);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.fs-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.fs-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fs-btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #05070d;
+}
+
+.fs-time {
+  margin-left: 4px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Over the picture the bar needs a lighter track than the console's, or the
+   seek bar disappears against a bright video frame. */
+.fs-seek::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    #fff 0%,
+    #fff var(--progress, 0%),
+    rgba(255, 255, 255, 0.3) var(--progress, 0%),
+    rgba(255, 255, 255, 0.3) 100%
+  );
+}
+
+.fs-seek::-moz-range-track {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.fs-seek::-moz-range-progress {
+  background: #fff;
+}
+
+.fs-seek::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Fullscreen expands the surface to the viewport. */
+.surface:fullscreen {
+  border: 0;
+  border-radius: 0;
+  min-height: 100vh;
+}
+
+/* The mount is the element YT.Player attaches to. In audio mode it is a 1x1
+   offscreen iframe: the video still streams at YouTube's lowest rendition, but
+   no visible chrome is left for it to shrink into. */
+.yt-mount {
+  width: 100%;
+  height: 100%;
+}
+
+/* In audio mode the streaming frame is a 1x1 offscreen iframe: the audio still
+   plays, but there is no visible video chrome at all. */
+.yt-mount.audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.surface-error {
+  background: rgba(251, 113, 133, 0.1);
+  color: var(--danger);
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  margin: 0;
+  font-size: 12px;
+  border: 1px solid rgba(251, 113, 133, 0.35);
+}
+
+/* ---------------------------------------------------------------- lyrics
+   Beside the player rather than under it: a song is longer than the transport
+   can spare, and the words are worth reading while the video runs. */
+
+.lyrics-panel {
+  /* The resize handle is absolutely positioned against this edge. Without a
+     positioned ancestor it resolved against the viewport instead, so the grab
+     strip sat invisibly at the top-left of the screen, nowhere near the column
+     it was meant to resize. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px;
+  background: var(--s1);
+  border-left: 1px solid var(--line);
+}
+
+/* The grab strip on the panel's left edge.
+   Twelve pixels, because it has to be catchable: it sits over the border and
+   most of the padding, never over the text, so grabbing it cannot hide a line.
+   `touch-action` is what lets a finger drag the edge instead of scrolling the
+   lyrics underneath it. */
+.lyrics-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  width: 12px;
+  display: grid;
+  place-items: center;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* The grip itself: a short line down the middle of the edge, visible before the
+   cursor arrives. A bare hit area is invisible, and an invisible hit area is an
+   edge you cannot drag. */
+.lyrics-resize::after {
+  content: '';
+  width: 3px;
+  height: 44px;
+  border-radius: 999px;
+  /* Lighter than the border it sits on: at --line it disappeared into the
+     panel edge, which is the same as having no handle at all. */
+  background: var(--line-3);
+  transition: background 140ms ease, height 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.lyrics-panel:hover .lyrics-resize::after,
+.lyrics-resize:hover::after,
+.lyrics-resize:focus-visible::after {
+  background: var(--accent);
+  height: 84px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+}
+
+.lyrics-resize:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lyrics-track {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lyrics-track span {
+  display: block;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Takes whatever height is left under the heading, so the panel scrolls as one
+   piece instead of the words scrolling inside a short box in a tall panel.
+
+   `pre`, not `pre-wrap`: a line that folds in half breaks the metre of the
+   thing being read, so a line that is too long scrolls sideways instead, and the
+   column can be dragged wider until it fits. */
+.lyrics-panel .lyrics-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  margin: 0;
+  padding: 14px;
+  border-radius: var(--r);
+  background: rgba(4, 6, 11, 0.55);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  white-space: pre;
+}
+
+/* No horizontal scrollbar under the words. It said "this column is too narrow",
+   which is the one thing the drag handle is there to fix, and a bar along the
+   bottom of a reading pane reads as a bug rather than an invitation. The text is
+   still reachable — wheel, shift-wheel and touch-drag all scroll it — it just no
+   longer advertises itself, and widening the column removes the need entirely.
+
+   `::-webkit-scrollbar` has to be declared before the `:horizontal` variant or
+   Chromium drops the per-axis rule entirely and draws the default bar anyway.
+   Setting its height to 0 here is what removes the horizontal one; the vertical
+   bar keeps its width and gets a thumb to match the rest of the panel.
+
+   Chromium and WebKit only: there is no standard way to hide one axis of a
+   scrollbar, and Firefox has no per-axis property, so it keeps a thin bar. */
+.lyrics-panel .lyrics-body::-webkit-scrollbar {
+  width: 10px;
+  height: 0;
+}
+
+.lyrics-panel .lyrics-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lyrics-panel .lyrics-body::-webkit-scrollbar-thumb {
+  background: var(--s4);
+  border-radius: 999px;
+}
+
+.lyrics-panel .lyrics-body::-webkit-scrollbar-thumb:hover {
+  background: var(--line-3);
+}
+
+.lyrics-credit {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+}
+
+/* The paste editor replaces the words in place, so it takes the same height the
+   reading pane did rather than opening a second box below it. A textarea, not an
+   input: lyrics are lines. */
+.lyrics-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.lyrics-editor textarea {
+  flex: 1;
+  min-height: 160px;
+  resize: none;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.lyrics-editor-actions,
+.lyrics-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Sits under the credit line, at the end of the column, so "Paste lyrics" is
+   where the eye has just finished reading rather than beside the close button. */
+.lyrics-actions {
+  margin-top: 10px;
+}
+
+/* ---------------------------------------------------------------- modals */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  /* Blurred rather than merely dark: it separates the dialog from the window
+     behind it without needing a heavier scrim than this. */
+  background: rgba(4, 6, 11, 0.62);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
+  animation: fade-in 160ms ease;
+}
+
+.modal {
+  position: relative;
+  background: linear-gradient(180deg, var(--s2), var(--s1));
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--lift), var(--sh-pop);
+  animation: modal-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* A hairline of accent along the top edge. It is the only decoration in the
+   dialog, and it marks the object as the thing you are currently working in. */
+.modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.modal-header,
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.modal-footer {
+  justify-content: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Progress line shown while the artist background is being fetched. */
+.hint.lookup-status {
+  color: var(--t2);
+  padding-left: 11px;
+  border-left: 2px solid var(--accent-line);
+}
+
+/* Shown when the browser refused to unmute an autoplaying track. */
+.hint.warn {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--r-sm);
+  padding: 8px 11px;
+}
+
+.hint.warn code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.16);
+}
+
+.cover-preview {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-xs);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cover-placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--s2);
+  font-size: 32px;
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 16px;
+  background: rgba(251, 113, 133, 0.12);
+  border-bottom: 1px solid rgba(251, 113, 133, 0.35);
+  font-size: 13px;
+}
+
+/* A finished file operation: a report, so it takes the accent rather than the
+   danger colour, even when it has a caveat in it. */
+.banner.notice {
+  background: var(--accent-a);
+  border-bottom-color: var(--accent-line);
+}
+
+/* Filing feedback: a transient confirmation that floats above the shortcut
+   bar rather than pushing the layout down, then dismisses itself. */
+.file-toast {
+  position: fixed;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: min(480px, 90vw);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-pop);
+}
+
+/* The link-health dialog sits one tier below the other dialogs: its rows
+   open the track card for the repair, and the card must land above the list
+   it came from so the run's results stay put underneath while each fix lands. */
+.modal-backdrop.health {
+  z-index: 40;
+}
+
+/* One row per flagged track: the name, why it was flagged, and the card that
+   repairs it. The agent report's two spans are reused so the wording reads
+   the same everywhere a merge or a check has something to say. */
+.health-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.health-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.health-row .agent-what {
+  flex: none;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.health-row .agent-why {
+  flex: 1;
+  min-width: 0;
+}
+
+.health-row .ghost-btn {
+  flex: none;
+}
+
+/* An AI batch that mostly worked. Neutral rather than green: it is a report,
+   not a confirmation that something is now correct, and the rejections listed
+   inside it mean something genuinely did not happen. */
+.banner.agent {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: var(--line-2);
+  align-items: flex-start;
+}
+
+.agent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent-summary {
+  font-weight: 600;
+}
+
+.agent-pending {
+  color: var(--muted);
+}
+
+.agent-pending code {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* Closed by default. The counts are the headline; the list is for the person
+   who needs to know which ten songs are missing, not for every poll. */
+.agent-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.agent-details ul {
+  margin: 6px 0 2px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.agent-details li {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.agent-what {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.agent-why {
+  color: var(--muted);
+  margin-left: auto;
+  padding-left: 10px;
+  text-align: right;
+  flex: 0 1 auto;
+}
+
+/* --------------------------------------------------------------- empty state
+   A bordered plate rather than a line of grey text: an empty list is a state of
+   the app, and giving it the same shape as a panel makes it read as something
+   the window is showing rather than something that failed to load. */
+.empty-state {
+  color: var(--muted);
+  margin: 0;
+  padding: 22px 18px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r);
+  background: rgba(255, 255, 255, 0.015);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.match-list,
+.playlist-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Metadata row under a resolved source slot in the add/edit dialogs. */
+.source-slot-meta {
+  margin-top: 8px;
+}
+
+.source-slot-meta input {
+  flex: 1;
+  min-width: 0;
+}
+
+.match-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  background: var(--s2);
+  border-color: var(--line);
+}
+
+.match-list button:hover:not(:disabled) {
+  background: var(--s3);
+  border-color: var(--accent-line);
+}
+
+.match-list em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The "add to playlist" menu that opens inside a track row. Opaque and floating,
+   with a wide shadow, because it overlaps the list it belongs to. */
+.popover {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  min-width: 230px;
+  background: var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: var(--sh-pop);
+  animation: pop-in 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ------------------------------------------------------------------- badges */
+
+.badge {
+  display: inline-block;
+  font-size: 10.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--s3);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  text-decoration: none;
+  margin: 0 4px 4px 0;
+  white-space: nowrap;
+}
+
+.badge.ok {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+/* ---------------------------------------------------------------- track info */
+
+.track-info {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.track-info h3 {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--muted);
+}
+
+.track-info p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--t2);
+  white-space: pre-wrap;
+}
+
+/* The source the Info text was taken from, so it can be followed. */
+.track-info p a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-line);
+  overflow-wrap: anywhere;
+}
+
+.track-info p a:hover {
+  border-bottom-color: var(--accent);
+}
+
+/* ------------------------------------------------------ fullscreen volume
+   The fullscreen bar has no room for a permanent slider, so the sound button
+   opens one. It sits inside the button's own group so pointer-leave on the
+   group closes it, while keyboard focus (which triggers no pointer events)
+   leaves it open. */
+.fs-volume {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fs-volume-slider {
+  width: 92px;
+  flex: none;
+}
+
+/* ------------------------------------------------------------ shortcut bar
+   Pinned to the bottom edge of the window. It is a sibling of the columns
+   rather than a child of the player, because the shortcuts are global.
+
+   Deliberately the quietest thing in the window: it is a reference, not a
+   control, and it should be readable without ever being the first thing
+   noticed. */
+.shortcut-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 8px 16px;
+  background: var(--s1);
+  border-top: 1px solid var(--line);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+  user-select: none;
+}
+
+.shortcut-bar kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  background: var(--s3);
+  color: var(--t2);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* ---------------------------------------------------------------- animation */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* On very wide screens the player stays centred rather than stretching, so the
+   transport buttons do not drift to opposite edges. */
+@media (min-width: 1600px) {
+  .player-area > * {
+    max-width: 960px;
+  }
+}
+
+/* Very narrow: the hero's artwork and text stop fitting side by side. */
+@media (max-width: 520px) {
+  .player-info {
+    gap: 12px;
+  }
+
+  .player-info img,
+  .player-info .cover-placeholder {
+    width: 84px;
+    height: 84px;
+  }
+
+  .player-meta h2 {
+    font-size: 19px;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
+}
+
+/* No hover, no hidden actions: on touch screens the row buttons are always
+   visible, or there is no way to discover — let alone press — them. Width is
+   deliberately not part of this query: a touch laptop is narrow or not, but
+   its rows are still pressed with a finger. */
+@media (hover: none) {
+  .row-actions {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Anyone who has asked the system for less motion gets none of it: the
+   equalizer and the entry animations are decoration, and decoration is exactly
+   what this setting is about. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* The measured-length readout in the add and edit dialogs.
+   Mono because it is a number being compared against another number, and
+   muted-but-present because it is information the user did not type and may
+   still want to question — not a warning, not a success. */
+.duration-readout {
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.duration-readout strong {
+  color: var(--t2);
+  font-weight: 600;
+}
+
+.duration-readout .muted {
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------------- agent panel
+   The one workflow where a person is the transport: a summary goes out on the
+   clipboard and a batch of JSON comes back on it. Each step is a numbered
+   plate rather than a run of fields, because the order is the whole point —
+   somebody who pastes before copying the prompt will get a worse answer, and
+   the numbering is what tells them where they are. */
+
+.modal.agent-panel {
+  width: min(880px, 100%);
+  gap: 12px;
+}
+
+.agent-step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--s1);
+}
+
+.agent-step h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+/* The step number as a small filled disc: an ordered thing rather than a
+   heading, so the eye can count them without reading. */
+.agent-step-n {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-a);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-step .hint {
+  margin: 0;
+}
+
+.agent-step .row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.agent-task-row {
+  gap: 6px;
+}
+
+/* Task chips reuse the player's chip shape but carry their own "on" state: the
+   player only ever draws chips with the `toggle` modifier, so the rule below
+   cannot change what the transport looks like. */
+.agent-panel .chip {
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+
+.agent-panel .chip.on {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-a);
+}
+
+/* Monospace, because what is in these boxes is JSON: the shape of the text is
+   information, and a proportional face makes a stray bracket hard to spot. */
+.agent-prompt,
+.agent-reply {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.agent-reply {
+  min-height: 120px;
+}
+
+/* Drop target: the border takes the accent so the box under the cursor is
+   obviously the one that will take the file. */
+.agent-reply.dropping,
+.file-button.dropping {
+  border-color: var(--accent);
+  background: var(--accent-a);
+}
+
+/* The preview verdict. Accent rule on the left, the way a status line is
+   marked, so "this is what will happen" reads differently from the hints
+   around it. */
+.hint.agent-verdict {
+  color: var(--t2);
+  border-left: 2px solid var(--accent-line);
+  padding: 7px 11px;
+  background: var(--accent-a);
+  border-radius: var(--r-xs);
+  font-size: 12.5px;
+}
+
+.backup-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.backup-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--s2);
+  font-size: 12px;
+}
+
+.backup-when {
+  color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+
+.backup-when em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+/* Restore takes two clicks, because it is the one action here that throws work
+   away. The armed state is the confirmation, in the button itself. */
+.backup-list .armed {
+  color: var(--danger);
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.12);
+}
+
+.backup-list button {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  padding: 4px 10px;
+}
+
+/* ================================================ playlist folder tree ==== */
+
+/* The panel around the tree — its header, its height and its drag handle — is
+   the same rail panel the filters are (`.rail-panel`), so no box is restyled
+   here. What is left is the rows, and the one row of controls above them. */
+.playlist-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Making folders and playlists sits at the top of the body, pushed to the far
+   edge: two small buttons, well away from the rows, which are for reading
+   rather than for editing. */
+.tree-tool-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+/* While a drag is in flight, an open folder's accent icon is dimmed back.
+   Beside a real drop target every blue icon looks like a candidate; now only
+   the row under the pointer is lit. */
+.playlist-tree.dragging .tree-row.open .tree-label svg {
+  color: var(--muted);
+}
+
+.tree-root,
+.tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Every row — folder or playlist, at any depth — is this one shape with the
+   same indent applied, which is what keeps a playlist sitting beside a folder
+   on exactly the same line as it. */
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 26px;
+  padding-right: 4px;
+  border-radius: var(--r-xs);
+}
+
+.tree-row:hover {
+  background: var(--s3);
+}
+
+.tree-row.selected {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.05));
+}
+
+/* An open folder is recognised by its icon, never by a highlight.
+
+   There is no disclosure arrow any more: the state of a folder is shown by the
+   folder, so an open one's icon takes the accent while a closed one stays
+   quiet — and the row itself takes no tint, because exactly one row is
+   selected at a time and an open folder that is not the selection must not
+   read as a second one. One less glyph in the indent gutter also means folders and
+   playlists start their names at the same x — the thing a tree has to get right
+   before anything else in it reads as hierarchy. */
+.tree-row.open .tree-label {
+  color: var(--text);
+}
+
+.tree-row.open .tree-label svg {
+  color: var(--accent);
+}
+
+/* The row a drag would drop into — last, so it out-ranks selection. */
+.tree-row.drop,
+.tree-row.open.drop {
+  background: var(--accent-a);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.tree-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  color: var(--t2);
+  cursor: pointer;
+}
+
+.tree-label:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+
+.tree-label svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.tree-count {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+/* Renaming replaces the name in place, so the row keeps its indentation and
+   the tree does not jump around while a name is being typed. */
+.tree-rename {
+  flex: 1;
+  min-width: 0;
+  margin: 2px 0;
+  padding: 3px 7px;
+  font-size: 12.5px;
+}
+
+/* The strip that appears under the tree while something is being dragged: the
+   only way to move an item out of a folder without aiming at a folder. */
+.tree-drop-root {
+  margin-top: 6px;
+  padding: 7px 8px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-xs);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.tree-drop-root.drop {
+  border-color: var(--accent-line);
+  background: var(--accent-a);
+  color: var(--text);
+}
+
+.tree-empty {
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--faint);
+}
+
+.tree-new {
+  display: flex;
+  gap: 6px;
+}
+
+.tree-new input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------ playlist info
+   The notes for the selected playlist, under the tree it describes. A hairline
+   rather than a gap: the two are one column of the rail. */
+/* Below the tree's box, so it survives any tree height. No top hairline of
+   its own: the box above already ends in one, and two lines a few pixels
+   apart would read as a double rule. No bottom padding either — the seam under
+   these notes is set by the rule below, so it can match the gap between the
+   playlist's name and its first line. */
+.playlist-info {
+  flex: none;
+  padding: 10px 14px 0;
+}
+
+/* The way back to what is playing. One button under the filters, naming the
+   audible list, so browsing never strands the music: pressing it restores
+   that list's selection and filters. A pulsing dot rather than an icon — it
+   is status first, action second. Its own class: the player's status label is
+   `.now-playing` and must keep looking as it always did. */
+.active-list {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 14px 0;
+  padding: 7px 10px;
+  background: var(--accent-a);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.active-list:hover {
+  border-color: var(--accent);
+}
+
+.active-list-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: active-list-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes active-list-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.active-list-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The notes end and the list's own row — the count, the shuffle, the repeat —
+   begins. Kept as tight as the title-to-notes gap inside the panel above, so
+   the second line of a workspace does not look further from the first than the
+   first is from its heading. Only when the panel is directly above: with no
+   notes to follow (a folder, the library) the list keeps its usual inset. */
+.playlist-info + .list-area {
+  padding-top: 8px;
+}
+
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-align: left;
+}
+
+.panel-toggle:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+
+.panel-toggle .chev {
+  flex: none;
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.panel-toggle[aria-expanded='true'] .chev {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 2px 12px;
+}
+
+/* Name left, actions right on the same line, so the panel reads as one header
+   rather than a title with a toolbar stranded underneath it. `wrap` is the
+   safety valve: a long name and three buttons cannot both fit a narrow rail,
+   and dropping the buttons to their own line beats truncating either. */
+.info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.info-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* The same eyebrow as the list header above the tracklist: whichever of the
+   two names the selection, it reads as the same title. */
+.info-name {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.info-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--t2);
+  white-space: pre-wrap;
+}
+
+.info-body textarea {
+  resize: vertical;
+  font-size: 12.5px;
+}
+
+/* ============================================== one-line tracklist ======= */
+
+.tracklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tracklist-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tracklist-actions,
+.tree-tool-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.tool-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border-radius: var(--r-xs);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.tool-btn:hover:not(:disabled) {
+  background: var(--s4);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.tool-btn.on {
+  color: #05070d;
+  background: var(--grad);
+  border-color: transparent;
+}
+
+.track-list {
+  gap: 1px;
+}
+
+.row-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  border-radius: var(--r-xs);
+}
+
+.row-num:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.row-num .num {
+  display: block;
+}
+
+.row-num .row-play {
+  display: none;
+  color: var(--accent);
+}
+
+.track-list li:hover .row-num .num {
+  display: none;
+}
+
+.track-list li:hover .row-num .row-play {
+  display: grid;
+}
+
+.row-playing {
+  display: none;
+}
+
+.track-list li.playing .row-num .num,
+.track-list li.playing .row-num .row-play {
+  display: none;
+}
+
+.track-list li.playing .row-num .row-playing {
+  display: flex;
+  color: var(--accent);
+}
+
+.row-line {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  /* One line of 13px text fits in 20px. The row used to reserve 30 — 8px of
+     padding top and bottom around 21px of inherited 1.5 line-height — which
+     meant a screenful of tracks was mostly air, and the list read as a set of
+     paragraphs rather than as a table. `line-height` is set here rather than
+     left to the body's 1.5 for the same reason: at one line per row the
+     leading is the row spacing. */
+  padding: 1px 8px;
+  line-height: 1.3;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.row-line:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+}
+
+.line-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--t2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 130ms ease;
+}
+
+.track-list li:hover .line-title {
+  color: #fff;
+}
+
+.line-dash {
+  flex: none;
+  color: var(--faint);
+}
+
+.line-artist {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-duration {
+  flex: none;
+  margin-left: auto;
+  padding-left: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------ dragging (playlists)
+   Re-ordering is offered in playlists only, and the list says so with `.reorder`.
+   The grip is absolutely positioned, so it never moves the text: it floats
+   over the row number on hover. The hover play triangle is nudged right a
+   touch in reorder lists so the two do not sit on top of each other. */
+
+.track-list.reorder li {
+  transition: background 130ms ease, opacity 130ms ease;
+}
+
+.track-list.reorder li:hover .row-num .row-play {
+  transform: translateX(4px);
+}
+
+.row-grip {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  height: 18px;
+  color: var(--faint);
+  cursor: grab;
+  /* Faint until wanted: the grip is a hint, not a column of buttons, and it must
+     not compete with the number it sits beside. */
+  opacity: 0;
+  transition: opacity 130ms ease, color 130ms ease;
+}
+
+.track-list li:hover .row-grip,
+.track-list li:focus-within .row-grip,
+.track-list li.dragging .row-grip {
+  opacity: 0.7;
+}
+
+.row-grip:hover {
+  color: var(--accent);
+}
+
+.row-grip:active {
+  cursor: grabbing;
+}
+
+/* The row being carried stays where it is and recedes, so the marker showing
+   where it will land is the brightest thing in the list. */
+.track-list li.dragging {
+  opacity: 0.4;
+}
+
+/* The landing slot, drawn on the edge of the row above or below the gap. Only
+   the marker moves: nothing in the list shifts until the drop happens. */
+.track-list li.drop-top::after,
+.track-list li.drop-bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--grad);
+  box-shadow: 0 0 10px -1px rgba(56, 189, 248, 0.8);
+}
+
+.track-list li.drop-top::after {
+  top: -1px;
+}
+
+.track-list li.drop-bottom::after {
+  bottom: -1px;
+}
+
+.track-list li.playing {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.05));
+}
+
+.track-list li.playing::before {
+  height: 60%;
+}
+
+.track-list li.playing .line-title {
+  color: #fff;
+}
+
+.track-list li.playing .line-artist,
+.track-list li.playing .line-duration {
+  color: #a5c9e8;
+}
+
+/* A row with no playable link: red text, so the list doubles as the fix list —
+   the eye lands on what still needs a YouTube link pasted by hand.
+   After the playing rules on purpose, so a link-less row stays red even when
+   it is the current one. */
+.track-list li.needs-link .line-title,
+.track-list li.needs-link .line-artist {
+  color: var(--danger);
+}
+
+.track-list li.needs-link:hover .line-title {
+  color: var(--danger);
+}
+
+.filter-clear {
+  align-self: flex-start;
+}
+
+/* ================================================== track card ========== */
+
+/* No width here on purpose: the card (and the editor it turns into) inherits
+   `.modal`'s width, so it is exactly as wide as the add dialog. A narrower
+   card used to squeeze the same two-column edit grid into 200px less. */
+
+.card-identity {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.card-cover {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--s3);
+  box-shadow: 0 4px 18px -8px rgba(0, 0, 0, 0.8);
+}
+
+.card-cover-ph {
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.35);
+  background: var(--grad-soft);
+  border: 1px solid var(--line);
+}
+
+.card-meta {
+  min-width: 0;
+}
+
+.card-meta h3 {
+  margin: 0 0 2px;
+  font-size: 17px;
+}
+
+.card-meta .artist {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.card-info {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--t2);
+  white-space: pre-wrap;
+}
+
+.card-section {
+  margin-top: 16px;
+}
+
+.card-section h4 {
+  margin: 0 0 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+/* Info now sits directly under its own heading rather than under the gap the
+   old unconditional margin left for it. */
+.card-section .card-info {
+  margin: 0;
+}
+
+/* A long lyric scrolls inside its own box instead of making the whole card
+   scroll, so the footer and the other sections stay where they are. */
+.card-lyrics {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  font: 12px/1.6 var(--font);
+  color: var(--t2);
+  white-space: pre-wrap;
+}
+
+.card-playlists {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-playlists li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 5px 8px;
+}
+
+.card-add {
+  display: flex;
+  gap: 8px;
+}
+
+/* Quick filing dialog for the playing track: a narrow modal listing the
+   playlists, opened from a transport button so nothing permanent sits
+   between the player and its info. */
+.file-dialog {
+  max-width: 380px;
+}
+
+.file-track {
+  margin: 0 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.file-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.card-add select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ====================================== compact, adjustable filter panel === */
+
+/* The taller half of the rail panel: a remembered height set inline with its
+   own scroll, so a long genre list — or a long tree — cannot push the tracklist
+   off screen. It is dragged by the strip along its bottom edge. */
+.rail-panel-area {
+  display: flex;
+  flex-direction: column;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  animation: none;
+}
+
+.rail-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px 12px;
+}
+
+.rail-panel-resize {
+  flex: none;
+  height: 12px;
+  cursor: row-resize;
+  display: grid;
+  place-items: center;
+  background: var(--s2);
+  border-top: 1px solid var(--line);
+}
+
+.rail-panel-resize::after {
+  content: '';
+  width: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line-2);
+}
+
+.rail-panel-resize:hover::after,
+.rail-panel-resize:focus-visible::after {
+  background: var(--accent);
+}
+
+.filter-bar {
+  gap: 8px;
+}
+
+.filter-search {
+  width: 100%;
+}
+
+.genre-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ================================================== card sources ========= */
+
+.card-sources {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-sources li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 6px 8px;
+}
+
+.src-role {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.src-kind {
+  font-size: 11px;
+  color: var(--t2);
+  background: var(--s3);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.src-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.src-link {
+  font-size: 11px;
+  color: var(--accent);
+  word-break: break-all;
+  margin-left: auto;
+}
+
+.card-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin: 6px 0 0;
+  font-size: 11px;
+}
+
+.card-line a {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+/* The card is now the editor too, so it needs room to scroll when open. */
+.track-card {
+  max-height: 88vh;
+  overflow: auto;
+}
+
+/* ================================================ right-click menu ======== */
+
+/* One menu, opened the same way from the tree and from the tracklist.
+
+   It is `fixed` rather than absolutely placed inside its row: a menu belongs to
+   the pointer, not to the thing it is about, and one anchored to a row scrolls
+   away from the gesture that opened it. */
+.context-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 186px;
+  max-height: min(56vh, 420px);
+  overflow: auto;
+  padding: 5px;
+  border-radius: var(--r-sm);
+  background: var(--s3);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--sh-pop), var(--lift);
+}
+
+.menu-block {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A hairline where a run of items ends — before a new group, and above a
+   destructive item — so "Delete" is never simply the next line under "Play". */
+.menu-block.new-group:not(:first-child),
+.menu-block.danger-block:not(:first-child) {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.menu-group {
+  margin: 2px 8px 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  box-shadow: none;
+  color: var(--t2);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--s4);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.menu-item.danger:hover:not(:disabled) {
+  background: rgba(251, 113, 133, 0.12);
+  border-color: transparent;
+  color: var(--danger);
+}
+
+
+.menu-item:disabled {
+  color: var(--faint);
+}
+
+.menu-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-meta {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+/* ============================================================================
+   THE SHELL
+   ----------------------------------------------------------------------------
+   Three modes, one set of rules. `layoutModeFor` in `hooks/useLayout.ts` decides
+   which of `.layout-phone`, `.layout-tablet` and `.layout-desktop` the app wears
+   — keep these numbers in step with it.
+
+   The shape is the same everywhere: a header (a top bar, or nothing on a
+   phone), the body, a docked player at the bottom, and — on a phone only — a tab
+   bar under the dock. The player is positioned rather than laid out, because it
+   is one component that moves between the dock and the full screen without ever
+   being unmounted: unmounting it would stop the stream.
+   ========================================================================== */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  --topbar-h: 58px;
+  --dock-h: 84px;
+  --tabbar-h: 0px;
+}
+
+.app.layout-phone,
+.app.layout-tablet {
+  --dock-h: 64px;
+  --tabbar-h: 56px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding-bottom: calc(var(--dock-h) + var(--tabbar-h));
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list-screen {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------ topbar */
+
+.topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: var(--topbar-h);
+  padding: 0 16px;
+  background: rgba(8, 12, 20, 0.8);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--lift);
+  position: relative;
+  z-index: 20;
+}
+
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(11, 16, 27, 0.7);
+  border: 1px solid var(--line);
+}
+
+.topnav-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t2);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.topnav-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--s2);
+}
+
+.topnav-btn.on {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.08));
+  border-color: var(--accent-line);
+  box-shadow: var(--lift);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--s2);
+  color: var(--t2);
+  font-size: 12.5px;
+  font-weight: 550;
+  box-shadow: var(--lift);
+}
+
+.topbar-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line-2);
+}
+
+.topbar-btn.primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #04070d;
+  font-weight: 650;
+}
+
+.topbar-btn.icon-only {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* ----------------------------------------------------------------- sidebar */
+
+.sidebar {
+  flex: none;
+  width: 300px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: rgba(9, 13, 22, 0.6);
+}
+
+.sidebar-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 8px 16px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+/* The tree was drawn inside a draggable panel with its own header; in a column
+   of its own it needs neither the card nor the fold. */
+.sidebar .tree-tool-actions {
+  padding: 0 0 6px;
+}
+
+.sidebar .tree-root {
+  padding: 0;
+}
+
+/* ----------------------------------------------------------- screen headers
+   A phone's screens name themselves and carry their own way back. The table bar
+   is the shell's; these are the screen's. */
+
+.screen-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+}
+
+.screen-title {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0 0 0 4px;
+}
+
+.screen-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 10px 0 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--t2);
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.screen-back:hover:not(:disabled) {
+  background: var(--s2);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------ library browser */
+
+.browser {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 0 12px 20px;
+}
+
+.browser-crumb {
+  margin: 0 0 8px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.browser-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.browser-search input {
+  flex: 1;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 15px;
+  padding: 0 14px;
+}
+
+.browser-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.browser-row-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.browser-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--s1);
+  color: var(--text);
+  text-align: left;
+}
+
+.browser-row:hover:not(:disabled) {
+  background: var(--s2);
+  border-color: var(--line);
+}
+
+.browser-row.on {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.04));
+  border-color: var(--accent-line);
+  color: var(--text);
+}
+
+.browser-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--s3);
+  color: var(--accent);
+  border: 1px solid var(--line);
+}
+
+.browser-icon.folder {
+  color: var(--indigo);
+}
+
+.browser-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.browser-name {
+  font-size: 15px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.browser-more {
+  flex: none;
+  width: 44px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.browser-more:hover {
+  background: var(--s2);
+  color: var(--text);
+}
+
+.browser-empty {
+  padding: 18px 10px;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------- list header */
+
+.list-header {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.list-header-top {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.list-cover {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  box-shadow: var(--lift), var(--sh-2);
+}
+
+.list-cover-icon {
+  grid-column: span 2;
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  background: radial-gradient(120% 120% at 20% 0%, rgba(56, 189, 248, 0.18), transparent 70%);
+}
+
+.list-cover-tile,
+.list-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.list-cover-tile.empty {
+  background: var(--s3);
+}
+
+.list-header-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.list-header-text h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 680;
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-sub {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.list-audible {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.list-description {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--t2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.list-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.play-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--grad);
+  color: #04070d;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 26px -12px rgba(56, 189, 248, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.play-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.play-primary:disabled {
+  background: var(--s3);
+  color: var(--muted);
+  box-shadow: none;
+  border-color: var(--line);
+}
+
+.chip.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.chip.icon {
+  height: 34px;
+  width: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip-label {
+  white-space: nowrap;
+}
+
+.playing-from {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--s1);
+  color: var(--t2);
+  font-size: 11.5px;
+}
+
+.playing-from:hover {
+  border-color: var(--line-2);
+  color: var(--text);
+}
+
+.playing-from-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ----------------------------------------------------------------- toolbar */
+
+.toolbar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7, 10, 18, 0.5);
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-search {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+.toolbar-popover-host {
+  position: relative;
+  flex: none;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--s2);
+  color: var(--t2);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.toolbar-btn:hover,
+.toolbar-btn.on {
+  color: var(--text);
+  border-color: var(--line-2);
+}
+
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #04070d;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.filters-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: min(340px, calc(100vw - 24px));
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--s2);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--sh-pop);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filters-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.filters-group-label {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-row.scroll {
+  max-height: 190px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.chip-count {
+  margin-left: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.hint-inline {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.toolbar-sort {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 6px 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--s2);
+  color: var(--muted);
+}
+
+.sort-select {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--t2);
+  font-size: 12.5px;
+  font-weight: 550;
+  height: 34px;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.sort-select option {
+  background: var(--s2);
+  color: var(--text);
+}
+
+.sort-dir {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t2);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.sort-dir:disabled {
+  opacity: 0.35;
+}
+
+.sort-dir:hover:not(:disabled) {
+  background: var(--s3);
+  color: var(--text);
+}
+
+.toolbar-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-a);
+  color: var(--text);
+  font-size: 11.5px;
+}
+
+.token:hover {
+  border-color: var(--accent);
+}
+
+.token.clear {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+
+.toolbar-empty {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------- track rows */
+
+.track-list-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 24px;
+}
+
+.list-empty {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.track-list li {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: 10px;
+  min-height: 52px;
+}
+
+.track-list li::before {
+  display: none;
+}
+
+.track-list li:hover {
+  background: var(--s2);
+}
+
+.track-list li.playing {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.02));
+}
+
+.track-list .row-line {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.track-list .row-line:hover {
+  border-color: transparent;
+}
+
+.row-state {
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.track-list li.playing .num {
+  color: var(--accent);
+}
+
+.row-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.line-title {
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-list li.playing .line-title {
+  color: var(--accent);
+}
+
+.line-sub {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-duration {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+  padding-right: 4px;
+}
+
+.track-list li.needs-link .line-title {
+  color: var(--danger);
+}
+
+.row-more {
+  flex: none;
+  width: 38px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--faint);
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.track-list li:hover .row-more,
+.track-list li:focus-within .row-more,
+.touch .row-more {
+  opacity: 1;
+}
+
+.row-more:hover {
+  background: var(--s3);
+  color: var(--text);
+}
+
+.row-grip {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--faint);
+  cursor: grab;
+}
+
+.track-list li.dragging {
+  opacity: 0.5;
+}
+
+.track-list li.drop-top {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.track-list li.drop-bottom {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.eq span {
+  width: 2.5px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: eq-bounce 900ms ease-in-out infinite;
+}
+
+.eq span:nth-child(1) { height: 45%; animation-delay: 0ms; }
+.eq span:nth-child(2) { height: 100%; animation-delay: 140ms; }
+.eq span:nth-child(3) { height: 65%; animation-delay: 280ms; }
+
+.eq.off span {
+  animation: none;
+  opacity: 0.4;
+}
+
+@keyframes eq-bounce {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eq span,
+  .playing-dot {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------- the player
+   One component, two shapes. The dock is a bar; the full view is a screen. */
+
+.player-host {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 30;
+}
+
+.player-host.docked {
+  bottom: var(--tabbar-h);
+  height: var(--dock-h);
+  border-top: 1px solid var(--line);
+  background: rgba(9, 13, 22, 0.92);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: 0 -18px 40px -30px rgba(0, 0, 0, 0.9);
+}
+
+.player-host.expanded {
+  inset: 0;
+  z-index: 60;
+  background: linear-gradient(180deg, #080c15, #05070d 60%);
+  overflow: auto;
+}
+
+.layout-desktop .player-host.expanded {
+  inset: 6vh 50% auto 50%;
+  transform: translateX(-50%);
+  width: min(860px, 92vw);
+  max-height: 88vh;
+  border-radius: 22px;
+  border: 1px solid var(--line-2);
+  box-shadow: var(--sh-3);
+  overflow: auto;
+}
+
+.player-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  border: none;
+  background: rgba(2, 4, 8, 0.66);
+  backdrop-filter: blur(3px);
+}
+
+/* ---- the dock ---- */
+
+.player.dock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 0 12px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.dock-cover {
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--s2);
+  padding: 0;
+}
+
+.dock-cover img,
+.dock-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dock-cover-empty {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  border-style: dashed;
+}
+
+.dock-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  position: relative;
+}
+
+.dock-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.dock-artist {
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.dock-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t2);
+}
+
+.dock-btn:hover:not(:disabled) {
+  background: var(--s2);
+  color: var(--text);
+}
+
+.dock-btn.primary {
+  width: 46px;
+  height: 46px;
+  background: var(--grad);
+  color: #04070d;
+  box-shadow: 0 8px 22px -12px rgba(56, 189, 248, 0.9);
+}
+
+.dock-time {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  padding: 0 4px;
+}
+
+.dock-volume {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dock-volume .volume-slider {
+  width: 84px;
+}
+
+.dock-expand {
+  flex: none;
+}
+
+.dock-empty-text {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dock-empty-action {
+  flex: none;
+}
+
+/* ---- the full player ---- */
+
+.player.full {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  min-height: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.player.full.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.player.full.empty h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.player-full-head,
+.player-screen-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.player-screen-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.player-screen-head .ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.player-screen-head .ghost-btn.on {
+  color: var(--text);
+  background: var(--s2);
+}
+
+.player.full .player-info img,
+.player.full .player-info .cover-placeholder {
+  width: 132px;
+  height: 132px;
+}
+
+.player.full .player-meta h2 {
+  font-size: 26px;
+}
+
+.media-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.segmented {
+  flex: none;
+  align-self: flex-start;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--s2);
+  border: 1px solid var(--line);
+}
+
+.segment {
+  height: 30px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.segment.on {
+  background: var(--grad);
+  color: #04070d;
+  font-weight: 650;
+}
+
+.media-body {
+  flex: 1;
+  min-height: 120px;
+  overflow: auto;
+  padding: 2px 2px 12px;
+}
+
+.media-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--t2);
+  white-space: pre-wrap;
+}
+
+.media-text a {
+  color: var(--accent);
+}
+
+.lyrics-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  white-space: normal;
+}
+
+.lyric-line {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--t2);
+}
+
+.media-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.media-empty p {
+  margin: 0;
+}
+
+.media-credit {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.queue-panel {
+  flex: none;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.queue-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.queue-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-size: 13px;
+}
+
+.queue-list button:hover:not(:disabled) {
+  background: var(--s2);
+}
+
+.queue-list li.playing button {
+  background: var(--accent-a);
+  color: var(--text);
+}
+
+.queue-num,
+.queue-time {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.queue-artist {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- tab bar */
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  height: var(--tabbar-h);
+  display: flex;
+  align-items: stretch;
+  background: rgba(6, 9, 15, 0.96);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tabbar-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  padding: 6px 0 8px;
+}
+
+.tabbar-btn.on {
+  color: var(--accent);
+}
+
+.tabbar-btn.on::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 28px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--grad);
+}
+
+.tabbar-btn {
+  position: relative;
+}
+
+.tabbar-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ---------------------------------------------------------------- You screen */
+
+.you {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 16px 24px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.you-card {
+  margin: 0 0 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--s1);
+  box-shadow: var(--lift);
+}
+
+.you-card h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.you-line {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  color: var(--t2);
+}
+
+.you-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.you-actions .ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--s2);
+  color: var(--t2);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.you-actions .ghost-btn:hover {
+  color: var(--text);
+  border-color: var(--line-2);
+}
+
+/* -------------------------------------------------------------- shortcuts */
+
+.shortcuts {
+  max-width: 460px;
+}
+
+.shortcut-list {
+  margin: 0;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.shortcut-row dt {
+  color: var(--t2);
+}
+
+.shortcut-row dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.shortcut-slash {
+  color: var(--faint);
+}
+
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--s3);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ banners
+   Stacks above the dock rather than inside the scrolling content, so a failed
+   write is visible from every screen. */
+
+.banner {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--dock-h) + var(--tabbar-h) + 12px);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(720px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--s2);
+  color: var(--text);
+  font-size: 12.5px;
+  box-shadow: var(--sh-pop);
+}
+
+.banner.error {
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(60, 16, 26, 0.96);
+}
+
+.lookup-status {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--dock-h) + var(--tabbar-h) + 12px);
+  z-index: 65;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(560px, calc(100vw - 24px));
+}
+
+.lookup-status .backfill-status {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(11, 16, 27, 0.96);
+  font-size: 12px;
+  box-shadow: var(--sh-2);
+}
+
+.backfill-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--s3);
+  overflow: hidden;
+}
+
+.backfill-bar span {
+  display: block;
+  height: 100%;
+  background: var(--grad);
+}
+
+/* --------------------------------------------------------------------- phone
+   One screen at a time, thumb-height rows, no hover anywhere. */
+
+.layout-phone .list-header,
+.layout-tablet .list-header {
+  padding: 8px 12px 10px;
+}
+
+.layout-phone .list-cover,
+.layout-tablet .list-cover {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+}
+
+.layout-phone .list-header-text h2,
+.layout-tablet .list-header-text h2 {
+  font-size: 19px;
+}
+
+.layout-phone .list-scroll,
+.layout-tablet .list-scroll {
+  padding: 6px 6px 20px;
+}
+
+.layout-phone .track-list li,
+.layout-tablet .track-list li {
+  min-height: 58px;
+}
+
+.layout-phone .track-list .row-line,
+.layout-tablet .track-list .row-line {
+  grid-template-columns: 22px 1fr auto;
+  gap: 8px;
+  padding: 6px;
+}
+
+.layout-phone .line-title,
+.layout-tablet .line-title {
+  font-size: 14.5px;
+}
+
+.layout-phone .line-sub,
+.layout-tablet .line-sub {
+  font-size: 12px;
+}
+
+.layout-phone .row-more,
+.layout-tablet .row-more {
+  opacity: 1;
+  width: 34px;
+  color: var(--muted);
+}
+
+.layout-phone .toolbar,
+.layout-tablet .toolbar {
+  padding: 8px 12px;
+}
+
+.layout-phone .toolbar-btn-label,
+.layout-tablet .toolbar-btn-label,
+.layout-phone .sort-select,
+.layout-tablet .sort-select {
+  font-size: 12px;
+}
+
+.layout-phone .player.full,
+.layout-tablet .player.full {
+  padding: 10px 14px 16px;
+  gap: 12px;
+}
+
+.layout-phone .dock-time,
+.layout-tablet .dock-time,
+.layout-phone .dock-volume,
+.layout-tablet .dock-volume {
+  display: none;
+}
+
+.layout-phone .dock-cover,
+.layout-tablet .dock-cover {
+  width: 46px;
+  height: 46px;
+}
+
+.layout-phone .dock-empty-action,
+.layout-tablet .dock-empty-action {
+  font-size: 12px;
+}
+
+/* A phone has no mouse: nothing may depend on hover, and nothing may rely on
+   HTML5 drag events, which touch browsers never fire. */
+@media (pointer: coarse) {
+  .row-more {
+    opacity: 1;
+  }
+
+  .track-list li[draggable='true'] {
+    -webkit-user-drag: none;
+  }
+}
+
+.layout-tablet .list-screen {
+  max-width: 900px;
+}
+
+.layout-tablet .player.full {
+  max-width: 760px;
+}
+
+/* -------------------------------------------------------------- small phones */
+
+@media (max-width: 400px) {
+  .list-actions {
+    gap: 6px;
+  }
+
+  .chip.toggle {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .play-primary {
+    height: 38px;
+    padding: 0 16px;
+  }
+
+  .toolbar-btn-label {
+    display: none;
+  }
+
+  .toolbar-btn {
+    padding: 0 10px;
+  }
+}
+
+/* ------------------------------------------------------------------ fixes
+   The dock is a bar, so it must not inherit the column layout the player card
+   uses when it is the centre of the window; and an empty dock is a sentence and
+   a button, not the 260px stage the old empty player reserved. */
+
+.player.dock {
+  flex-direction: row;
+  min-height: 0;
+  padding: 0 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  gap: 12px;
+}
+
+.player.dock.empty {
+  display: flex;
+  min-height: 0;
+  padding: 0 16px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.player.dock .dock-cover-empty,
+.player.dock.empty .dock-cover {
+  width: 48px;
+  height: 48px;
+}
+
+.list-actions .chip.icon {
+  margin-left: auto;
+}
+
+/* The full player's transport: one primary row, one row of choices. */
+.player.full .transport {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.player.full .transport-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.player.full .transport-modes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.player.full .transport-main .t-btn.primary {
+  min-width: 104px;
+  height: 46px;
+  font-size: 14px;
+}
+
+.player.full .transport-modes .t-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.player.full .view-toggles {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A phone has hardware volume keys; a 84px slider in the middle of the fader
+   row is a control nobody can reach past their own thumb. */
+@media (pointer: coarse) {
+  .volume-slider {
+    display: none;
+  }
+}
+
+.layout-phone .player.full .transport-main .t-btn.primary .t-label,
+.layout-tablet .player.full .transport-main .t-btn.primary .t-label {
+  display: none;
+}
+
+.layout-phone .player.full .transport-main .t-btn.primary,
+.layout-tablet .player.full .transport-main .t-btn.primary {
+  min-width: 64px;
+  height: 56px;
+  border-radius: 999px;
+}
+
+.layout-phone .player.full .view-toggles,
+.layout-tablet .player.full .view-toggles {
+  margin-left: 0;
+}
+
+.layout-phone .player.full .player-info,
+.layout-tablet .player.full .player-info {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.layout-phone .player.full .player-meta .chips,
+.layout-tablet .player.full .player-meta .chips {
+  display: none;
+}
+
+.layout-phone .player.full .track-card-btn,
+.layout-tablet .player.full .track-card-btn {
+  position: static;
+  margin-left: auto;
+}
+
+/* A phone's fader is the phone's: no slider in the transport, and the facts
+   row gives way to the artwork — the album is already on every list row. */
+.layout-phone .volume-slider,
+.layout-tablet .volume-slider,
+.layout-phone .dock-volume,
+.layout-tablet .dock-volume {
+  display: none;
+}
+
+.layout-phone .player.full .facts,
+.layout-tablet .player.full .facts {
+  display: none;
+}
+
+.layout-tablet .dock-volume .volume-slider {
+  display: none;
+}
+
+/* Text for assistive technology only: a search box whose placeholder is its
+   label still needs a name of its own. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The phone's list header: one row of controls that fits 360px, and a dock with
+   room for the title it is showing. */
+.layout-phone .list-actions,
+.layout-tablet .list-actions {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.layout-phone .list-actions .chip-label,
+.layout-tablet .list-actions .chip-label {
+  display: none;
+}
+
+.layout-phone .list-actions .chip.toggle,
+.layout-tablet .list-actions .chip.toggle {
+  padding: 0 11px;
+}
+
+.layout-phone .list-actions .chip.icon,
+.layout-tablet .list-actions .chip.icon {
+  margin-left: auto;
+}
+
+.layout-phone .dock-prev,
+.layout-tablet .dock-prev {
+  display: none;
+}
+
+.layout-phone .dock-controls,
+.layout-tablet .dock-controls {
+  gap: 2px;
+}
+
+.layout-phone .dock-btn,
+.layout-tablet .dock-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.layout-phone .dock-btn.primary,
+.layout-tablet .dock-btn.primary {
+  width: 42px;
+  height: 42px;
+}
+
+/* The dock is fixed on every width, and `.body` reserves its height, so the
+   last row is never underneath it. Nothing here may put it back in the flow:
+   that reserves the space twice and leaves a dead strip above the bar. */
+.player-host.docked {
+  position: fixed;
+}
+
+/* The modes row holds shuffle, repeat and the audio/video/live switch; all
+   three are choices about playback, so they share one centred row. */
+.player.full .view-toggles {
+  margin-left: 0;
+}
+
+/* The desktop sheet's backdrop. Dim enough to put the library behind glass,
+   plain enough that the sheet still reads as part of the app. */
+.player-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  border: none;
+  padding: 0;
+  background: rgba(4, 6, 11, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  cursor: default;
+  animation: fade-in 160ms ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.layout-phone .player.full .media-panel,
+.layout-tablet .player.full .media-panel {
+  border-radius: 16px;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  padding: 14px;
+}
+
+/* The desktop sheet: wide enough for the artwork, the facts and one transport
+   row without stacking, and anchored to the top so a long queue can scroll
+   instead of pushing the artwork off the screen. */
+@media (min-width: 1180px) {
+  .layout-desktop .player-host.expanded {
+    width: min(940px, 90vw);
+    max-height: 90vh;
+  }
+
+  .player.full .media-panel {
+    border-radius: 14px;
+    background: var(--s2);
+    border: 1px solid var(--line);
+    padding: 16px;
+    margin-top: 6px;
+    min-height: 170px;
+  }
+
+  .player.full .player-info {
+    gap: 20px;
+  }
+
+  .player.full .player-cover,
+  .player.full .player-info > .cover,
+  .player.full .player-info img {
+    max-width: 180px;
+  }
+}
+
+/* A dialog's verbs should not be something you have to scroll to find: the
+   footer sticks to the bottom of the card, and the header to the top, so the
+   one action a form exists for is always one press away. */
+.modal-header {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  margin: -20px -20px 0;
+  padding: 18px 20px 12px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-footer {
+  position: sticky;
+  bottom: -20px;
+  z-index: 2;
+  margin: 0 -20px -20px;
+  padding: 12px 20px 16px;
+  background: var(--s1);
+  border-top: 1px solid var(--line);
+}
+
+/* The native sort menu takes its colours from the OS, and a white popup on a
+   dark app looks like a different program. */
+.sort-select option {
+  background: #0d1526;
+  color: #e6edf7;
+}
+
+/* A popover anchored to a button near the left edge of a phone has nowhere to
+   go: 340px of panel to the right of a button at x=160 is off the screen. Below
+   the phone breakpoint it becomes a sheet above the thumb, which is also the
+   only place a filter list of this length is comfortable. */
+.layout-phone .toolbar-popover-host,
+.layout-tablet .toolbar-popover-host {
+  position: static;
+}
+
+.layout-phone .filters-popover,
+.layout-tablet .filters-popover {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  top: auto;
+  bottom: calc(56px + 46px + 12px);
+  width: auto;
+  max-height: 58vh;
+  overflow: auto;
+  z-index: 80;
+  padding: 14px;
+  border-radius: 18px;
+  box-shadow: var(--sh-pop), 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.layout-tablet .filters-popover {
+  width: min(360px, calc(100vw - 32px));
+}
+
+.modal-footer button,
+.modal-footer .ghost-btn {
+  white-space: nowrap;
+}
+
+/* The three fixed heights the shell measures itself against. They are named
+   here because four different rules (the dock's position, the tab bar's, the
+   list's bottom padding and the floating lookup status) all need to agree, and
+   a magic number copied four times is a bug waiting for the fifth copy. */
+:root {
+  --topbar-h: 54px;
+  --dock-h: 80px;
+  /* No tab bar above the phone breakpoint: a reserved strip with nothing in it
+     is a gap under the dock, not a layout. */
+  --tabbar-h: 0px;
+}
+
+.layout-phone,
+.layout-tablet {
+  --tabbar-h: 56px;
+}
+
+/* The dock, measured. One bar height, one artwork size, one progress line on
+   the bar's bottom edge — and the title gets the width that is left. */
+.player.dock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: 12px;
+}
+
+.player.dock .dock-cover {
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.player.dock .dock-cover-img {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.player.dock .dock-meta {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.player.dock .dock-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player.dock .dock-artist {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The mute button used to be hidden here because the fader was: with no slider
+   there is nothing to drag, so the icon was the only control and the hardware
+   keys did the same job. The slider is on the phone again, and a fader without
+   a mute is a fader you have to drag to zero. */
+
+
+/* The equaliser is the answer to "what is playing" in a list of fifty rows, so
+   it is drawn at a size you can see from a metre away. */
+.player.full .eq,
+.row-line .eq {
+  gap: 2px;
+}
+
+.player.full .eq > span,
+.row-line .eq > span {
+  width: 3px;
+}
+
+/* An empty list is a place to start, not a dead end: the sentence is readable,
+   centred, and tells you which control creates the first row. */
+.list-empty {
+  max-width: 46ch;
+  margin: 64px auto 0;
+  padding: 22px 24px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  background: var(--s1);
+  border: 1px dashed var(--line-2);
+  border-radius: 16px;
+}
+
+/* The top bar stays above the player sheet and its backdrop. A scrim that
+   swallows the navigation turns "close the player" into "find the backdrop" —
+   the place you came from should still be one press away. */
+.topbar {
+  position: relative;
+  z-index: 70;
+}
+
+.layout-phone .tabbar,
+.layout-tablet .tabbar {
+  z-index: 70;
+}
+
+/* ============================================================================
+   ROUND TWO
+   The top bar has one place on it; the player's transport is one row that wraps;
+   the library column is a width you drag; the phone has no mini player.
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ top bar */
+.topnav .topnav-btn + .topnav-btn {
+  margin-left: 0;
+}
+
+/* The one primary action in the bar: the mark inherits the label's ink instead
+   of being the only white thing on a gradient. */
+.topbar-btn.primary svg {
+  color: currentColor;
+}
+
+.topbar-actions .topbar-btn:not(.primary) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px;
+  height: 36px;
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------- the column, dragged */
+.sidebar {
+  min-width: 0;
+  position: relative;
+  width: 300px;
+}
+
+.sidebar-resize {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 9px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.sidebar-resize::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: var(--line);
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.sidebar-resize:hover::after,
+.sidebar-resize:focus-visible::after,
+body.dragging-col .sidebar-resize::after {
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+.sidebar-resize:focus-visible {
+  outline: none;
+}
+
+body.dragging-col {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* A long name is the normal case: let it wrap to a second line rather than
+   vanish behind an ellipsis, now that the column can be made wider. */
+.sidebar .tree-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.sidebar .tree-label {
+  align-items: flex-start;
+}
+
+/* ------------------------------------------------------- the player, as a sheet */
+.layout-desktop .player-host.expanded {
+  /* Flat, and it stays flat: a panel that shifts under the pointer in a dim
+     room reads as a glitch, not as feedback. */
+  background: #070a12;
+}
+
+.player.full,
+.player.full .player-info,
+.player.full .transport {
+  transition: none;
+}
+
+/* --------------------------------------------------------------- the transport */
+.player.full .transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+}
+
+.player.full .transport-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player.full .transport-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px;
+  border-radius: var(--r);
+  background: rgba(4, 6, 11, 0.5);
+  border: 1px solid var(--line);
+}
+
+.player.full .transport-actions .t-btn {
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--t2);
+}
+
+.player.full .transport-actions .t-btn:hover:not(:disabled) {
+  background: var(--s3);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.player.full .transport-actions .t-btn[aria-pressed='true'] {
+  background: var(--s4);
+  border-color: var(--line-2);
+  color: var(--accent);
+  box-shadow: var(--lift), 0 0 16px -6px rgba(56, 189, 248, 0.7);
+}
+
+/* The card button and the filing button are the same object: same box, same
+   weight, same hover. One of them used to sit in a corner of the artwork. */
+.player.full .transport-actions .t-btn.card {
+  color: var(--t2);
+}
+
+/* ------------------------------------------------------------------ the queue */
+.player-screen-head .ghost-btn.on {
+  color: #05070d;
+  background: var(--grad);
+  border-color: transparent;
+  box-shadow: 0 8px 20px -10px rgba(56, 189, 248, 0.85);
+}
+
+.queue-list {
+  gap: 0;
+}
+
+.queue-list button {
+  grid-template-columns: 22px 1fr auto auto;
+  gap: 8px;
+  padding: 4px 8px;
+  min-height: 30px;
+  font-size: 12.5px;
+  border-radius: 7px;
+}
+
+.queue-num,
+.queue-time {
+  font-size: 10.5px;
+}
+
+.queue-artist {
+  font-size: 11.5px;
+}
+
+.queue-head {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------ the You dialog */
+.modal.you-modal {
+  width: min(720px, 100%);
+  max-height: 86vh;
+  padding: 0;
+  gap: 0;
+}
+
+.you-modal .you {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: none;
+  width: auto;
+  margin: 0;
+  padding: 0 20px 20px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.you-modal .modal-header {
+  position: sticky;
+  top: 0;
+  margin: 0 -20px 4px;
+  padding: 16px 20px 12px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--line);
+  z-index: 2;
+}
+
+.you-modal .modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+/* Dialogs sit above the player sheet, which is why the track card opened behind
+   it: the sheet is z-index 60 and a dialog was 40. */
+.modal-backdrop {
+  z-index: 90;
+}
+
+/* ---------------------------------------------------------------- the phone */
+.app.layout-phone,
+.app.layout-tablet {
+  /* No mini player on a phone or a tablet: the tab bar is the navigation and the
+     player is a tab, so nothing may reserve a bar at the bottom of a list. This
+     selector carries `.app` because `.app.layout-*` above sets the same property
+     with more weight than a bare `.layout-*` would ever have. */
+  --dock-h: 0px;
+  --tabbar-h: 56px;
+}
+
+.layout-phone .player-host.docked,
+.layout-tablet .player-host.docked {
+  display: none;
+}
+
+/* The player is a screen between the top of the window and the tab bar. */
+.layout-phone .player-host.expanded,
+.layout-tablet .player-host.expanded {
+  position: fixed;
+  inset: 0 0 var(--tabbar-h) 0;
+  z-index: 40;
+  background: #070a12;
+  overflow: auto;
+}
+
+.layout-phone .player.full,
+.layout-tablet .player.full {
+  max-width: none;
+  min-height: 100%;
+  padding: 14px 14px 20px;
+}
+
+/* One line per row: number (or the equaliser), title · artist, duration. */
+.layout-phone .track-list .row-line,
+.layout-tablet .track-list .row-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 8px 0 4px;
+}
+
+.layout-phone .track-list li,
+.layout-tablet .track-list li {
+  min-height: 46px;
+}
+
+.layout-phone .track-list .row-text,
+.layout-tablet .track-list .row-text {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.layout-phone .track-list .line-title,
+.layout-tablet .track-list .line-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layout-phone .track-list .line-sub,
+.layout-tablet .track-list .line-sub {
+  display: flex;
+  min-width: 0;
+  font-size: 12px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+
+.layout-phone .track-list .line-album,
+.layout-tablet .track-list .line-album {
+  display: none;
+}
+
+.layout-phone .track-list .line-artist,
+.layout-tablet .track-list .line-artist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-phone .track-list .line-duration,
+.layout-tablet .track-list .line-duration {
+  flex: none;
+  font-size: 11.5px;
+}
+
+/* On the player a phone does want the record's facts: there is no room for a
+   card, and "which album was this" is the question a phone user actually has. */
+.layout-phone .player.full .facts,
+.layout-tablet .player.full .facts {
+  display: grid;
+}
+
+.layout-phone .player.full .player-info,
+.layout-tablet .player.full .player-info {
+  gap: 12px;
+}
+
+.layout-phone .player.full .player-info img,
+.layout-tablet .player.full .player-info img,
+.layout-phone .player.full .player-info .cover-placeholder,
+.layout-tablet .player.full .player-info .cover-placeholder {
+  width: 104px;
+  height: 104px;
+}
+
+.layout-phone .player.full .chips,
+.layout-tablet .player.full .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.layout-phone .player.full .chips .chip,
+.layout-tablet .player.full .chips .chip {
+  font-size: 10.5px;
+  padding: 2px 7px;
+}
+
+/* Four tabs need less room each than three did. */
+.layout-phone .tabbar-btn,
+.layout-tablet .tabbar-btn {
+  font-size: 10px;
+}
+
+.layout-phone .tabbar-label,
+.layout-tablet .tabbar-label {
+  letter-spacing: 0;
+}
+
+/* One row, and only one: the groups wrap as a whole when the sheet is narrow,
+   never each into a full-width bar of its own. */
+.player.full .transport {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.player.full .transport-main,
+.player.full .transport-actions {
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+/* The volume slider is the one elastic thing in the row: it shrinks before the
+   buttons start wrapping. */
+.player.full .transport .volume-slider {
+  flex: 1 1 70px;
+  min-width: 60px;
+  max-width: 120px;
+}
+
+@media (max-width: 620px) {
+  .player.full .transport {
+    gap: 6px;
+  }
+
+  .player.full .transport-main .t-btn.primary {
+    min-width: 92px;
+  }
+}
+
+/* A phone's player does show the genres: "which album, which year, what kind of
+   thing is this" is the whole reason to open the player from a list. */
+.layout-phone .player.full .player-meta .chips,
+.layout-tablet .player.full .player-meta .chips {
+  display: flex;
+}
+
+/* The grab handle announces itself when the pointer is in the column: a hairline
+   the height of the window is discoverable only if you already know. */
+.sidebar:hover .sidebar-resize::after,
+.sidebar-resize:focus-visible::after {
+  top: 50%;
+  bottom: auto;
+  height: 56px;
+  width: 3px;
+  left: 3px;
+  transform: translateY(-50%);
+  background: var(--line-3);
+  border-radius: 999px;
+}
+
+.sidebar .sidebar-resize:hover::after,
+.sidebar-resize:focus-visible::after,
+body.dragging-col .sidebar-resize::after {
+  background: var(--accent);
+  height: 92px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.sidebar-resize::after {
+  top: 0;
+  bottom: 0;
+  height: auto;
+  transform: none;
+  border-radius: 0;
+}
+
+.sidebar:hover .sidebar-resize::after {
+  top: 50%;
+  bottom: auto;
+  height: 56px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+}
+
+/* ==================================================================== ROUND THREE
+
+   Four things were asked for here, and one of them is not a style at all: the
+   player sheet must not change appearance when the pointer moves over it. What
+   follows is grouped by the shape it belongs to — the dock, the queue, the
+   tracklist, the sheet's transport — rather than by the order it was asked in. */
+
+/* ---- the dock, in three zones -------------------------------------------
+
+   What is playing on the left, the transport *and* the seek bar in the middle,
+   the things you set once on the right. The middle column is the widest thing
+   in the bar and it is centred on the bar, not on the space left over: an
+   equal-weight three-column grid is the only way to get a transport that sits
+   under the same pixel whether the title on the left is two characters or forty
+   and whether there is a volume slider on the right. */
+
+.player.dock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 44vw) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+  padding: 0 2px;
+}
+
+.dock-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dock-left .dock-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dock-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dock-center .dock-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+/* Seek under the transport, the way every streaming app does it: the buttons
+   are the thing your thumb aims at, the bar is the thing your eye tracks. */
+.dock-seek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.dock-seek .dock-time {
+  flex: none;
+  width: 36px;
+  padding: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.dock-seek .dock-time:last-of-type {
+  text-align: left;
+}
+
+.dock-seek-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dock-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dock-right .dock-volume {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dock-right .dock-volume .volume-slider {
+  width: 88px;
+}
+
+/* Four digits of clock either side of a 120px bar is noise. The times go before
+   the bar does. */
+@media (max-width: 1000px) {
+  .dock-seek .dock-time,
+  .dock-right .volume-slider {
+    display: none;
+  }
+}
+
+/* ---- the queue: title and artist on one line ------------------------------ */
+
+.queue-list button {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.queue-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.queue-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--t2);
+}
+
+.queue-text .queue-artist {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.queue-list li.playing .queue-title {
+  color: var(--text);
+}
+
+/* ---- the tracklist, at the queue's density -------------------------------
+
+   The list is a table you scan: one line per track, the number, the title, the
+   artist beside it, the length on the right. It used to give each row a
+   two-line block and eleven pixels of padding, which turned forty tracks into
+   two screens of mostly air. The numbers below are the queue's: 30px rows,
+   12.5px text, no gap between rows. */
+
+.track-list li {
+  min-height: 30px;
+}
+
+.track-list .row-line {
+  height: 30px;
+  padding: 0 8px 0 4px;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.track-list .row-state {
+  width: 22px;
+  flex: none;
+}
+
+.track-list .row-text {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.track-list .line-title {
+  font-size: 12.5px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-list .line-sub {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.track-list .line-artist,
+.track-list .line-album {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-list .line-duration {
+  flex: none;
+  font-size: 11px;
+}
+
+.track-list .row-more {
+  flex: none;
+  height: 26px;
+}
+
+/* The album is the first thing to go when the column is narrow: it is the part
+   of a row you can live without. */
+@media (max-width: 1180px) {
+  .track-list .line-album {
+    display: none;
+  }
+}
+
+/* ---- the sheet's transport, in two groups --------------------------------
+
+   Filing a record and opening its card act on *this* track; audio, video and
+   live choose *which version* of it plays. Two kinds of decision, so two
+   groups, with a hairline between them and no shared radius pretending they are
+   one control. */
+
+.player.full .transport-views {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line-2);
+}
+
+.player.full .transport-views .t-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 9px;
+}
+
+.player.full .transport-views .t-btn[aria-pressed='true'] {
+  background: var(--s3);
+  color: var(--text);
+}
+
+/* The mode switch keeps its divider only while the row is actually one row. */
+@media (max-width: 620px) {
+  .player.full .transport-views {
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+  }
+}
+
+/* ---- the sheet does not react to the pointer -----------------------------
+
+   Reported twice, so it is written down twice: hovering the open player must
+   not brighten, lift, tint or blur anything. No transition on the sheet's own
+   surface — a transition is how a background change becomes *visible* — and no
+   hover rule may reach it. */
+
+.player.full,
+.player.full .player-info,
+.player.full .player-meta,
+.player.full .transport,
+.player.full .facts,
+.layout-desktop .player-host.expanded,
+.player-host.expanded {
+  transition: none;
+  animation: none;
+}
+
+.player.full:hover,
+.player.full .player-info:hover,
+.player.full .player-meta:hover,
+.player.full .transport:hover,
+.layout-desktop .player-host.expanded:hover,
+.player-host.expanded:hover {
+  background-color: transparent;
+  filter: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.layout-desktop .player-host.expanded,
+.layout-desktop .player-host.expanded:hover {
+  background: #070a12;
+  filter: none;
+}
+
+.player.full,
+.player.full:hover {
+  background: transparent;
+}
+
+/* ---- the volume survives the phone ---------------------------------------
+
+   Two rules used to take it away from touch widths: one for every coarse
+   pointer, one for `.layout-phone`. A browser at 390px with a mouse has a fader
+   and should see it; so should a tablet. The dock is not on a phone at all, but
+   the sheet's own transport is, and the slider there is the only volume control
+   the screen offers. */
+
+@media (pointer: coarse) {
+  .player.full .transport .volume-slider {
+    display: block;
+  }
+}
+
+.layout-phone .player.full .transport .volume-slider,
+.layout-tablet .player.full .transport .volume-slider,
+.layout-phone .player.full .volume-slider,
+.layout-tablet .player.full .volume-slider {
+  display: block;
+}
+
+/* The slider needs a width to be a slider. On a 390px screen the transport row
+   wraps; give the fader its own line and 96px. */
+.layout-phone .player.full .transport .volume-slider,
+.layout-tablet .player.full .transport .volume-slider {
+  width: 104px;
+}
+
+.layout-phone .player.full .transport-volumes,
+.layout-tablet .player.full .transport-volumes {
+  margin-left: 0;
+}
+
+/* The phone and the tablet get the condensed list too. Their rows were pinned at
+   46px before the list was one line per track; 33px is one line plus enough
+   padding to still be a thumb's width across a full-width row. */
+.layout-phone .track-list .row-line,
+.layout-tablet .track-list .row-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 33px;
+  padding: 0 6px 0 2px;
+}
+
+.layout-phone .track-list li,
+.layout-tablet .track-list li {
+  min-height: 33px;
+}
+
+.layout-phone .track-list .line-title,
+.layout-tablet .track-list .line-title {
+  font-size: 13px;
+}
+
+.layout-phone .track-list .line-sub,
+.layout-tablet .track-list .line-sub {
+  font-size: 11.5px;
+}
+
+/* The fader on the phone and the tablet, next to the mute it belongs to. */
+.layout-phone .player.full .transport .volume-btn,
+.layout-tablet .player.full .transport .volume-btn {
+  display: grid;
+}
+
+.layout-phone .player.full .transport .volume-slider,
+.layout-tablet .player.full .transport .volume-slider {
+  margin-left: 2px;
+}
+
+/* The list header's meta line is one line. It used to wrap, and on a phone
+   "Playlist · 12 tracks · 1 h 2 min · playing now" broke before the last two
+   words, which put a lone accent-coloured tag on a line of its own in the
+   busiest corner of the screen. Truncate instead — the count and the running
+   time are the parts you can live without, and the tag that says what is
+   audible is worth keeping. */
+.layout-phone .list-sub,
+.layout-tablet .list-sub {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.layout-phone .list-sub .list-audible,
+.layout-tablet .list-sub .list-audible {
+  flex: none;
+}
+
+.list-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A phone header has room for the kind, the count and what is audible; the
+   running time is the first of those that can go, and it takes its separator
+   with it. */
+@media (max-width: 820px) {
+  .list-sub .list-time {
+    display: none;
+  }
+}

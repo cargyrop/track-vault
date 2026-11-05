@@ -1,0 +1,416 @@
+{
+  "format": "trackvault-library",
+  "version": 1,
+  "tracks": [
+    {
+      "id": 1,
+      "title": "Paranoid Android",
+      "artist": "Radiohead",
+      "album": "OK Computer",
+      "coverUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "year": 1992,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": null,
+      "lyricsSource": null,
+      "duration": 214,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "alternative rock",
+        "art rock"
+      ],
+      "sources": [
+        {
+          "id": 1,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Everything In Its Right Place",
+      "artist": "Radiohead",
+      "album": "In Rainbows",
+      "coverUrl": null,
+      "year": 1993,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": "And the words go like this\nsecond line of the song\na third line that is longer than the others so it wraps around the panel\nlast line",
+      "lyricsSource": "LRCLIB",
+      "duration": 254,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "alternative rock",
+        "art rock"
+      ],
+      "sources": [
+        {
+          "id": 2,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Weird Fishes/Arpeggi",
+      "artist": "Radiohead",
+      "album": "OK Computer",
+      "coverUrl": null,
+      "year": 1994,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": null,
+      "lyricsSource": null,
+      "duration": 291,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "alternative rock",
+        "art rock",
+        "1990s"
+      ],
+      "sources": [
+        {
+          "id": 3,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "No Surprises",
+      "artist": "Radiohead",
+      "album": "In Rainbows",
+      "coverUrl": null,
+      "year": 1995,
+      "musicbrainzRecordingId": null,
+      "info": "A note kept about this recording. Pulled from a review that seemed worth remembering, with a link: https://en.wikipedia.org/wiki/No_Surprises",
+      "lyrics": "And the words go like this\nsecond line of the song\na third line that is longer than the others so it wraps around the panel\nlast line",
+      "lyricsSource": "LRCLIB",
+      "duration": 328,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "alternative rock",
+        "art rock"
+      ],
+      "sources": [
+        {
+          "id": 4,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Idioteque",
+      "artist": "Radiohead",
+      "album": "OK Computer",
+      "coverUrl": null,
+      "year": 1996,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": null,
+      "lyricsSource": null,
+      "duration": 365,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "alternative rock",
+        "art rock"
+      ],
+      "sources": [
+        {
+          "id": 5,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Angel",
+      "artist": "Massive Attack",
+      "album": "Mezzanine",
+      "coverUrl": null,
+      "year": 1997,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": "And the words go like this\nsecond line of the song\na third line that is longer than the others so it wraps around the panel\nlast line",
+      "lyricsSource": "LRCLIB",
+      "duration": 402,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop",
+        "downtempo",
+        "1990s"
+      ],
+      "sources": [
+        {
+          "id": 6,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Teardrop",
+      "artist": "Massive Attack",
+      "album": "Mezzanine",
+      "coverUrl": null,
+      "year": 1998,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": null,
+      "lyricsSource": null,
+      "duration": 439,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop",
+        "downtempo"
+      ],
+      "sources": [
+        {
+          "id": 7,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Inertia Creeps",
+      "artist": "Massive Attack",
+      "album": "Mezzanine",
+      "coverUrl": null,
+      "year": 1999,
+      "musicbrainzRecordingId": null,
+      "info": "A note kept about this recording. Pulled from a review that seemed worth remembering, with a link: https://en.wikipedia.org/wiki/Inertia_Creeps",
+      "lyrics": "And the words go like this\nsecond line of the song\na third line that is longer than the others so it wraps around the panel\nlast line",
+      "lyricsSource": "LRCLIB",
+      "duration": 476,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop",
+        "downtempo"
+      ],
+      "sources": [
+        {
+          "id": 8,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Risingson",
+      "artist": "Massive Attack",
+      "album": "Mezzanine",
+      "coverUrl": null,
+      "year": 2000,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": null,
+      "lyricsSource": null,
+      "duration": 213,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop",
+        "downtempo",
+        "1990s"
+      ],
+      "sources": [
+        {
+          "id": 9,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Group Four",
+      "artist": "Massive Attack",
+      "album": "Mezzanine",
+      "coverUrl": null,
+      "year": 2001,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": "And the words go like this\nsecond line of the song\na third line that is longer than the others so it wraps around the panel\nlast line",
+      "lyricsSource": "LRCLIB",
+      "duration": 250,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop",
+        "downtempo"
+      ],
+      "sources": [
+        {
+          "id": 10,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Mysterons",
+      "artist": "Portishead",
+      "album": "Dummy",
+      "coverUrl": null,
+      "year": 2002,
+      "musicbrainzRecordingId": null,
+      "info": null,
+      "lyrics": null,
+      "lyricsSource": null,
+      "duration": 287,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop"
+      ],
+      "sources": [
+        {
+          "id": 11,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Sour Times",
+      "artist": "Portishead",
+      "album": "Dummy",
+      "coverUrl": null,
+      "year": 1991,
+      "musicbrainzRecordingId": null,
+      "info": "A note kept about this recording. Pulled from a review that seemed worth remembering, with a link: https://en.wikipedia.org/wiki/Sour_Times",
+      "lyrics": "And the words go like this\nsecond line of the song\na third line that is longer than the others so it wraps around the panel\nlast line",
+      "lyricsSource": "LRCLIB",
+      "duration": 324,
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "genres": [
+        "trip hop",
+        "1990s"
+      ],
+      "sources": [
+        {
+          "id": 12,
+          "youtubeId": "dQw4w9WgXcQ",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "kind": "official",
+          "label": null,
+          "role": "audio"
+        }
+      ]
+    }
+  ],
+  "folders": [
+    {
+      "id": 1,
+      "name": "Metal",
+      "parentId": null,
+      "createdAt": "2026-10-01T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "NWOBHM",
+      "parentId": 1,
+      "createdAt": "2026-10-01T10:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "Late night",
+      "parentId": null,
+      "createdAt": "2026-10-01T10:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "name": "Shoegaze",
+      "parentId": null,
+      "createdAt": "2026-10-01T10:00:00.000Z"
+    }
+  ],
+  "playlists": [
+    {
+      "id": 1,
+      "name": "Rainy afternoon",
+      "description": "Slow, wet, and a bit sad.",
+      "createdAt": "2026-10-01T10:00:00.000Z",
+      "tracks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "folderId": null
+    },
+    {
+      "id": 2,
+      "name": "Focus",
+      "description": null,
+      "createdAt": "2026-10-01T10:00:00.000Z",
+      "tracks": [
+        11,
+        12
+      ],
+      "folderId": 3
+    },
+    {
+      "id": 5,
+      "name": "Tar pit",
+      "description": "Slow riffs.",
+      "createdAt": "2026-10-01T10:00:00.000Z",
+      "tracks": [
+        1,
+        2,
+        3
+      ],
+      "folderId": 2
+    }
+  ],
+  "plays": []
+}

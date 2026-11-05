@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.vite/
+*.local
+
+# Local database files
+*.db
+*.db-journal
+*.db-wal
+
+# The library lives in data/library.json and is personal, so it stays out of git.
+data/library.json
+data/library.json.tmp
+
+# Same for the AI drop box and everything the merge derives from it: the inbox an
+# agent is about to send, the copies kept after it was applied, the pre-merge
+# snapshots, and the generated context an agent reads. None of it belongs in git.
+data/inbox.json
+data/inbox.json.tmp
+data/inbox-applied/
+data/backups/
+data/agent-context.json
+data/last-merge.json
+
+.DS_Store
