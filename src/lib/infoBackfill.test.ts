@@ -3,8 +3,11 @@ import {
   backfillTrack,
   mergeFacts,
   needsBackfill,
+  readCheckedLookupKeys,
   runBackfill,
+  trackLookupKey,
   unionGenres,
+  writeCheckedLookupKeys,
   type BackfillTrack,
 } from './infoBackfill'
 import { EMPTY_FACTS, type ArtistFacts } from './artistInfo'
@@ -304,3 +307,48 @@ describe('runBackfill', () => {
     expect(maxActive).toBe(1)
   })
 })
+
+describe('checked lookup persistence', () => {
+  it('computes a stable key preferring the primary YouTube ID', () => {
+    expect(
+      trackLookupKey({
+        id: 42,
+        artist: 'Machine Head',
+        title: 'Locust',
+        sources: [{ youtubeId: 'dQw4w9WgXcQ' }],
+      }),
+    ).toBe('yt:dQw4w9WgXcQ')
+    expect(
+      trackLookupKey({
+        id: 42,
+        artist: 'Machine Head',
+        title: 'Locust',
+        sources: [],
+      }),
+    ).toBe('meta:machine head::locust')
+  })
+
+  it('persists and restores checked lookup keys in localStorage', () => {
+    const store = new Map<string, string>()
+    const fakeWindow = {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value)
+        },
+      },
+    }
+    vi.stubGlobal('window', fakeWindow)
+    try {
+      const keys = new Set(['yt:abc12345678', 'meta:band::song'])
+      writeCheckedLookupKeys(keys)
+      expect([...readCheckedLookupKeys()]).toEqual([
+        'yt:abc12345678',
+        'meta:band::song',
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
+

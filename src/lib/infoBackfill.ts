@@ -218,3 +218,45 @@ export async function runBackfill(
     cancelled: pending.length > filled + skipped,
   }
 }
+
+const CHECKED_LOOKUP_KEY = 'trackvault.checkedLookupTracks'
+
+/**
+ * Stable identity key for remembering whether a track has already been
+ * checked by the automatic info/lyrics lookup across app restarts.
+ */
+export function trackLookupKey(track: {
+  id?: number
+  artist: string
+  title: string
+  sources?: Array<{ youtubeId: string }>
+}): string {
+  const yt = track.sources?.[0]?.youtubeId?.trim()
+  if (yt) return `yt:${yt}`
+  return `meta:${track.artist.trim().toLowerCase()}::${track.title.trim().toLowerCase()}`
+}
+
+export function readCheckedLookupKeys(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = window.localStorage.getItem(CHECKED_LOOKUP_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed)
+      ? new Set(
+          parsed.filter((item): item is string => typeof item === 'string'),
+        )
+      : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+export function writeCheckedLookupKeys(keys: ReadonlySet<string>): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CHECKED_LOOKUP_KEY, JSON.stringify([...keys]))
+  } catch {
+    // Storage quota or private mode: in-memory set still applies for this session.
+  }
+}
