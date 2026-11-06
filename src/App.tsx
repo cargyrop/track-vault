@@ -45,7 +45,12 @@ import type {
   TrackWithSources,
 } from './lib/types'
 import type { BackfillSummary } from './hooks/useInfoBackfill'
-import type { BackfillTrack } from './lib/infoBackfill'
+import {
+  readCheckedLookupKeys,
+  trackLookupKey,
+  writeCheckedLookupKeys,
+  type BackfillTrack,
+} from './lib/infoBackfill'
 import { DJ_REFILL_COUNT, draftDjPicks } from './lib/dj'
 import type { LyricsBackfillTrack } from './lib/lyricsBackfill'
 import { matchesTrackFilter } from './lib/trackFilter'
@@ -696,67 +701,90 @@ export function App() {
   )
 
   /**
-   * The tracks that were already here when this window opened.
+   * Tracks that were already in the library when the app opened, plus tracks
+   * whose initial lookup has already run in a previous session.
    *
-   * Automatic lookups are for tracks that are **added**, not for the whole
-   * library on every launch. The add dialog looks a track up before it saves,
-   * so sweeping the library at startup asked the same questions about the same
-   * songs again each time the app was opened — one request a second, per
-   * missing field, for as long as the run took. The first load with the library
-   * in hand defines "already here" and is never swept; anything that arrives
-   * afterwards is: a track added through the dialog whose lookup failed, a file
-   * imported, a batch merged from an AI inbox, a hand edit picked up by the
-   * poll. `null` until that first load, because an empty library is not the
-   * same thing as "nothing was here yet".
+   * Automatic background lookups must only run the first time a library is
+   * loaded (via Import / Replace) or when new tracks arrive outside the add
+   * dialog — never when closing and re-opening the app.
    */
-  const arrivedAt = useRef<Set<number> | null>(null)
-  const arrivals = useCallback((tracks: TrackWithSources[]): TrackWithSources[] => {
-    if (arrivedAt.current === null) {
-      arrivedAt.current = new Set(tracks.map((track) => track.id))
-      return []
+  const checkedLookupKeys = useRef<Set<string> | null>(null)
+  if (checkedLookupKeys.current === null) {
+    const initialKeys = readCheckedLookupKeys()
+    for (const track of api.tracks) {
+      initialKeys.add(trackLookupKey(track))
     }
-    const here = arrivedAt.current
-    return tracks.filter((track) => !here.has(track.id))
-  }, [])
+    checkedLookupKeys.current = initialKeys
+  }
+  const arrivedAt = useRef<Set<string> | null>(null)
+
+  const handleAddTrack = useCallback(
+    async (payload: Parameters<Library['addTrack']>[0]) => {
+      // `AddTrackDialog` already looks up artist info and lyrics before calling
+      // `onAdd`, so record this track as checked now to avoid a duplicate
+      // background sweep right after saving or on subsequent launches.
+      const key = trackLookupKey(payload)
+      checkedLookupKeys.current?.add(key)
+      arrivedAt.current?.add(key)
+      if (checkedLookupKeys.current) {
+        writeCheckedLookupKeys(checkedLookupKeys.current)
+      }
+      return api.addTrack(payload)
+    },
+    [api],
+  )
 
   /**
-   * Fills in the background for a track that arrives missing something.
-   *
-   * Read from the whole library rather than from `api.tracks`, because that
-   * list is the filtered one: a track added while a search is active is still
-   * new here. The sweep itself ignores tracks it has already tried this
-   * session, so re-running this effect — it watches the visible list, which the
-   * refresh at the end of a run changes — costs a filter and nothing else.
+   * Unified background lookup for newly imported/loaded tracks that have never
+   * been checked before. Waits until `library` is connected so the Frame-1
+   * cached state (`library === null`) never mistakes an uninitialized store
+   * for an empty library.
    */
   useEffect(() => {
-    if (api.loading) return
+    if (!library || api.loading) return
     let cancelled = false
     void api.listAllTracks().then((tracks) => {
       if (cancelled) return
-      const arrived = arrivals(tracks)
+      const checked = checkedLookupKeys.current ?? new Set<string>()
+      checkedLookupKeys.current = checked
+
+      if (arrivedAt.current === null) {
+        // Initial database load on startup: mark every existing track as
+        // already present and checked so re-opening the app never re-runs
+        // info or lyrics lookups.
+        const initial = new Set<string>()
+        let dirty = false
+        for (const track of tracks) {
+          const key = trackLookupKey(track)
+          initial.add(key)
+          if (!checked.has(key)) {
+            checked.add(key)
+            dirty = true
+          }
+        }
+        arrivedAt.current = initial
+        if (dirty) writeCheckedLookupKeys(checked)
+        return
+      }
+
+      const here = arrivedAt.current
+      const arrived: TrackWithSources[] = []
+      let dirty = false
+      for (const track of tracks) {
+        const key = trackLookupKey(track)
+        if (!here.has(key) && !checked.has(key)) {
+          arrived.push(track)
+        }
+        here.add(key)
+        if (!checked.has(key)) {
+          checked.add(key)
+          dirty = true
+        }
+      }
+      if (dirty) writeCheckedLookupKeys(checked)
       if (!arrived.length) return
+
       void backfill.sweep(arrived.map(backfillCandidate))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [api.loading, api.listAllTracks, api.tracks, arrivals, backfill.sweep])
-
-  /**
-   * Finds words for a track that arrives without them — the lyrics twin of the
-   * sweep above, with the same arrivals-only rule. A track that already has
-   * words is never touched, however they got there, and a paste that lands
-   * while its lookup is in flight is re-checked before each write, so typed
-   * words always beat fetched ones. Playing a track still looks its words up on
-   * the spot, so an old track is never left wordless for want of the sweep.
-   */
-  useEffect(() => {
-    if (api.loading) return
-    let cancelled = false
-    void api.listAllTracks().then((tracks) => {
-      if (cancelled) return
-      const arrived = arrivals(tracks)
-      if (!arrived.length) return
       void lyricsBackfill.sweep(
         arrived.map(lyricsCandidate),
         (id) => {
@@ -768,7 +796,15 @@ export function App() {
     return () => {
       cancelled = true
     }
-  }, [api.loading, api.listAllTracks, api.tracks, knownTracks, arrivals, lyricsBackfill.sweep])
+  }, [
+    library,
+    api.loading,
+    api.listAllTracks,
+    api.tracks,
+    knownTracks,
+    backfill.sweep,
+    lyricsBackfill.sweep,
+  ])
 
   /** Marks a DJ pick heard, so it leaves Up next but stays reachable. */
   const markDjHeard = useCallback((id: number) => {
@@ -1782,7 +1818,7 @@ export function App() {
       <AddTrackDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        onAdd={api.addTrack}
+        onAdd={handleAddTrack}
         playlists={api.playlists}
         onAddToPlaylist={api.addToPlaylist}
       />
