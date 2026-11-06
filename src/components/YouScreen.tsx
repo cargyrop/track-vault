@@ -1,5 +1,11 @@
+import { useEffect, useState } from 'react'
 import { plural } from '../lib/format'
 import { useEscape } from '../hooks/useEscape'
+import {
+  canTriggerInstallPrompt,
+  subscribeInstallPrompt,
+  triggerInstallPrompt,
+} from '../lib/pwa'
 
 interface Props {
   /** Where the library actually is, said in words rather than implied. */
@@ -37,6 +43,15 @@ export function YouScreen({
   onShowShortcuts,
 }: Props) {
   useEscape(onClose)
+  const [canInstall, setCanInstall] = useState(() => canTriggerInstallPrompt())
+
+  useEffect(
+    () =>
+      subscribeInstallPrompt(() => {
+        setCanInstall(canTriggerInstallPrompt())
+      }),
+    [],
+  )
 
   return (
     <div className="you">
@@ -132,6 +147,15 @@ export function YouScreen({
           from YouTube. Nothing is downloaded.
         </p>
         <div className="you-actions">
+          {canInstall && (
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => void triggerInstallPrompt()}
+            >
+              Install app…
+            </button>
+          )}
           <button type="button" className="ghost-btn" onClick={onShowShortcuts}>
             Keyboard shortcuts
           </button>

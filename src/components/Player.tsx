@@ -32,6 +32,15 @@ import {
   type PlaybackQuality,
 } from '../lib/youtube'
 import { formatClock, formatDuration } from '../lib/format'
+import {
+  bindMediaSessionHandlers,
+  createKeepAliveAudio,
+  shouldResumeBackgroundPause,
+  syncMediaSessionMetadata,
+  syncMediaSessionPlaybackState,
+  syncMediaSessionPosition,
+  type KeepAliveAudio,
+} from '../lib/backgroundAudio'
 import { TrackCover } from './TrackCover'
 import { MediaPanel, type MediaPane } from './MediaPanel'
 import {
@@ -181,6 +190,63 @@ type View = PlaybackView
 /** Lowest level that still makes sound, used when the slider is dragged to 0. */
 const MIN_AUDIBLE = 1
 
+const PROGRESS_STORAGE_KEY = 'trackvault.playbackProgress'
+
+interface StoredPlaybackProgress {
+  trackId: number
+  time: number
+  duration: number
+}
+
+function readStoredProgress(trackId: number | null): StoredPlaybackProgress | null {
+  if (trackId === null || typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(PROGRESS_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<StoredPlaybackProgress>
+    if (
+      parsed.trackId === trackId &&
+      typeof parsed.time === 'number' &&
+      Number.isFinite(parsed.time) &&
+      parsed.time >= 0
+    ) {
+      return {
+        trackId,
+        time: parsed.time,
+        duration:
+          typeof parsed.duration === 'number' &&
+          Number.isFinite(parsed.duration) &&
+          parsed.duration > 0
+            ? parsed.duration
+            : 0,
+      }
+    }
+  } catch {
+    // Ignore storage errors.
+  }
+  return null
+}
+
+function writeStoredProgress(
+  trackId: number | null,
+  time: number,
+  duration: number,
+): void {
+  if (trackId === null || typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      PROGRESS_STORAGE_KEY,
+      JSON.stringify({
+        trackId,
+        time: Math.max(0, Math.floor(time)),
+        duration: Math.max(0, Math.floor(duration)),
+      }),
+    )
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
 /**
  * Leaves native fullscreen without toggling: the exit half of
  * `toggleNativeFullscreen`, for paths (HUD exit, view switch) that already
@@ -250,11 +316,20 @@ export function Player({
   onToggleRepeat = null,
   memberPlaylistIds,
 }: Props) {
+  const initialProgress = useMemo(
+    () => readStoredProgress(track?.id ?? null),
+    // Read once on mount for the restored track.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
   const [quality] = useState<PlaybackQuality>(AUDIO_SAVER_QUALITY)
   const [playing, setPlaying] = useState(false)
   const [started, setStarted] = useState(false)
-  const [time, setTime] = useState(0)
-  const [duration, setDuration] = useState(0)
+  const [time, setTime] = useState(() => initialProgress?.time ?? 0)
+  const [duration, setDuration] = useState(
+    () => initialProgress?.duration || track?.duration || 0,
+  )
+  const resumeOffsetRef = useRef<number>(initialProgress?.time ?? 0)
   const [muted, setMuted] = useState(false)
   // The stored level is kept separately from `muted`, so unmuting restores the
   // volume you had instead of snapping back to 100.
@@ -302,6 +377,33 @@ export function Player({
   }, [fileOpen])
 
   const playerRef = useRef<YTPlayer | null>(null)
+  // The YouTube video ID currently loaded inside `playerRef.current`. Keeping
+  // the single YT.Player iframe alive across track changes and calling
+  // `loadVideoById` preserves the browser's gesture-unlocked media session so
+  // background tabs and mobile browsers continue playing when a track ends.
+  const loadedVideoId = useRef<string | null>(null)
+  // True once the current load's ENDED transition has been handled, preventing
+  // `onStateChange(ENDED)` and the 250ms poll from double-advancing.
+  const endedHandledRef = useRef(false)
+  // Tracks whether the listener intends for audio to be playing (as opposed to
+  // an unsolicited pause emitted by mobile browsers when switching apps).
+  const wantPlayingRef = useRef(false)
+  // Timestamp when the document was last hidden or blurred, and consecutive
+  // auto-resume attempts during that background session.
+  const lastBackgroundedAtRef = useRef(0)
+  const bgResumeAttemptsRef = useRef(0)
+  // Top-level silent looping <audio> session so mobile browsers keep the tab's
+  // audio focus alive across track transitions and app switches.
+  const keepAliveRef = useRef<KeepAliveAudio | null>(null)
+  useEffect(() => {
+    const keepAlive = createKeepAliveAudio()
+    keepAliveRef.current = keepAlive
+    return () => {
+      keepAlive.destroy()
+      keepAliveRef.current = null
+    }
+  }, [])
+
   // The track id already reported as ended. The poll below sees ENDED on every
   // tick until the next track loads, so without this one listen would be
   // logged dozens of times. Reset whenever the track changes.
@@ -316,9 +418,7 @@ export function Player({
   const autoplayNext = useRef(false)
   // Guards against two loads racing when the user clicks quickly.
   const loadToken = useRef(0)
-  // What the live player was built for. The view can only be rebuilt in place
-  // when it is the *same track* in a different view; when the track changes,
-  // the normal load path already builds for the current view.
+  // What the live player was built for.
   const builtView = useRef<View | null>(null)
   const builtTrack = useRef<number | null>(null)
 
@@ -402,50 +502,25 @@ export function Player({
   // ------------------------------------------------------------ lifecycle
 
   /**
-   * Tears down the current player.
-   *
-   * Note: YouTube's iframe script logs a benign cross-origin `postMessage`
-   * warning after a track change, because it still holds a reference to the
-   * frame it created. Blanking the iframe src first was tried to silence that,
-   * but it detaches the player from the DOM and produces a worse "player is not
-   * attached to the DOM" warning on every subsequent call. A plain destroy() is
-   * the lesser warning, so that is what we do.
+   * Tears down the current player on unmount or when the active track is
+   * cleared entirely.
    */
   const destroyPlayer = useCallback(() => {
     // Invalidate any in-flight load so its result is ignored.
     loadToken.current++
+    wantPlayingRef.current = false
+    keepAliveRef.current?.stop()
     try {
       playerRef.current?.destroy()
     } catch {
       // Destroying an already-detached player throws in some browsers.
     }
     playerRef.current = null
+    loadedVideoId.current = null
     builtView.current = null
     builtTrack.current = null
+    endedHandledRef.current = false
   }, [])
-
-  /**
-   * Changing track resets the transport to a fresh, not-yet-started state, so
-   * selecting a track always shows a Play button rather than inheriting the
-   * previous track's playback UI. `autoplayNext` decides whether it starts
-   * immediately or waits for a click.
-   *
-   * Two things are deliberately *not* reset:
-   *
-   * - The audio/video choice, because it is a top-bar preference and staying in
-   *   video mode across a skip is what you want.
-   * - Fullscreen, because skipping with `n`/`p` while watching fullscreen must
-   *   not dump you back into the little card. The surface stays mounted and the
-   *   replacement player is built inside it, so fullscreen is continuous.
-   */
-  useEffect(() => {
-    destroyPlayer()
-    setPlaying(false)
-    setStarted(false)
-    setTime(0)
-    setDuration(0)
-    setError(null)
-  }, [track?.id, destroyPlayer])
 
   // Leaving video view has no surface to stay fullscreen on, so fullscreen ends.
   useEffect(() => {
@@ -462,41 +537,6 @@ export function Player({
     if (variant !== 'dock' || view === 'audio') return
     onViewChange?.('audio')
   }, [variant, view, onViewChange])
-
-  /**
-   * Handles the view switch.
-   *
-   * The two views usually stream *different* videos, so switching changes which
-   * source is current. That makes a source change ambiguous: it is either the
-   * deliberate audio<->video switch, or a track change. The two were previously
-   * separate effects racing each other, and whichever ran first tore the player
-   * down, so switching views stopped playback and required a second click on
-   * Play — the bug this replaces.
-   *
-   * One effect now decides, using the track the live player was built for:
-   *
-   * - Same track, different view -> rebuild in place, keeping the position and
-   *   the playing/stopped state.
-   * - Track change, or no live player -> reset and wait for a Play press (or the
-   *   pending `autoplayNext` intent from a skip).
-   *
-   * A stopped track stays stopped across the switch, which is why the rebuild
-   * is driven by the *previous* playing state rather than always autoplaying.
-   */
-  useEffect(() => {
-    // The player belongs to this track and a view switch is in progress: the
-    // dedicated effect below owns it. Bail so this one does not destroy it.
-    if (builtTrack.current !== null && builtTrack.current === trackId) {
-      return
-    }
-
-    destroyPlayer()
-    setPlaying(false)
-    setStarted(false)
-    setTime(0)
-    setDuration(0)
-    setError(null)
-  }, [source?.youtubeId, trackId, destroyPlayer])
 
   useEffect(() => destroyPlayer, [destroyPlayer])
 
@@ -541,33 +581,119 @@ export function Player({
     [],
   )
 
-  /** Creates the player and optionally begins playback. */
+  // Stable refs for event callbacks attached when YT.Player is first created.
+  const onPlayerStateChangeRef = useRef<(state: number) => void>(() => undefined)
+  const onPlayerErrorRef = useRef<(message: string) => void>(() => undefined)
+
+  /**
+   * Creates the player on first play and reuses it across subsequent track
+   * changes and view switches via `loadVideoById` / `cueVideoById`.
+   *
+   * Keeping the single `YT.Player` iframe alive is what allows continuous
+   * background playback: once the user's initial Play gesture unlocks the
+   * iframe's media element, loading the next track into that same instance
+   * preserves the active audio session even when the browser tab is hidden.
+   */
   const start = useCallback(
-    async (autoplay: boolean, fromGesture = true) => {
+    async (autoplay: boolean, fromGesture = true, startSeconds = 0) => {
       const host = mountRef.current
       if (!source || !host) return
 
-      // Already have a player for this track: just play or pause it.
+      stopRequested.current = false
+      wantPlayingRef.current = autoplay
+      if (autoplay) keepAliveRef.current?.start()
+      else keepAliveRef.current?.stop()
+
+      const frameWidth = view === 'audio' ? 1 : VIDEO_FRAME_WIDTH
+      const frameHeight = view === 'audio' ? 1 : VIDEO_FRAME_HEIGHT
+
+      // Reuse the live player instance whenever one already exists.
       const existing = playerRef.current
       if (existing) {
-        if (autoplay) {
-          if (existing.getCurrentTime() > 1) existing.seekTo(0, true)
-          existing.playVideo()
-          setPlaying(true)
-        } else {
-          existing.pauseVideo()
-          setPlaying(false)
+        loadToken.current++
+        try {
+          existing.setSize?.(frameWidth, frameHeight)
+          const iframe = existing.getIframe?.()
+          if (iframe) {
+            iframe.setAttribute('width', String(frameWidth))
+            iframe.setAttribute('height', String(frameHeight))
+          }
+        } catch {
+          // Stubs without setSize/getIframe are unaffected.
         }
+
+        applyAudio(existing, volume, muted)
+        setError(null)
+        setSoundBlocked(false)
+        endedHandledRef.current = false
+        bgResumeAttemptsRef.current = 0
         builtView.current = view
         builtTrack.current = trackId
+
+        const sameVideo = loadedVideoId.current === source.youtubeId
+        loadedVideoId.current = source.youtubeId
+
+        if (autoplay) {
+          setStarted(true)
+          setPlaying(true)
+          if (sameVideo) {
+            if (startSeconds > 0) {
+              existing.seekTo(startSeconds, true)
+              setTime(startSeconds)
+            } else if (
+              existing.getCurrentTime() > 1 ||
+              existing.getPlayerState() === YTState.ENDED
+            ) {
+              existing.seekTo(0, true)
+              setTime(0)
+            }
+            existing.playVideo()
+          } else {
+            setTime(startSeconds)
+            if (startSeconds === 0) setDuration(0)
+            existing.loadVideoById(
+              source.youtubeId,
+              startSeconds,
+              effectiveQuality === AUTO_QUALITY ? undefined : effectiveQuality,
+            )
+            existing.playVideo()
+          }
+          if (effectiveQuality !== AUTO_QUALITY) {
+            try {
+              existing.setPlaybackQuality(effectiveQuality)
+            } catch {
+              // Quality hint only.
+            }
+          }
+        } else {
+          setPlaying(false)
+          if (!sameVideo) {
+            setStarted(false)
+            setTime(startSeconds)
+            setDuration(0)
+            if (typeof existing.cueVideoById === 'function') {
+              existing.cueVideoById(
+                source.youtubeId,
+                startSeconds,
+                effectiveQuality === AUTO_QUALITY ? undefined : effectiveQuality,
+              )
+            } else {
+              existing.stopVideo()
+            }
+          } else {
+            if (startSeconds > 0) {
+              existing.seekTo(startSeconds, true)
+              setTime(startSeconds)
+            }
+            existing.pauseVideo()
+          }
+        }
         return
       }
 
-      // Browsers only allow audible playback started from a user gesture. A
-      // muted start is therefore used *only* for the gesture-less case (skipping
-      // to the next track), and unmuted as soon as playback is running. Starting
-      // muted on a plain Play press was the bug: every track began silent and
-      // needed the mute button pressed.
+      // First-time player creation. Browsers only allow audible playback
+      // started from a user gesture, so a muted start is used only if initial
+      // creation ever happens without one.
       const mustStartMuted = autoplay && !fromGesture
 
       const token = ++loadToken.current
@@ -576,23 +702,35 @@ export function Player({
         const player = await createPlayer(host, {
           videoId: source.youtubeId,
           quality: effectiveQuality,
-          // A 1x1 frame in audio mode keeps YouTube's own quality heuristic
-          // pinned to the lowest video rendition. Video mode uses one fixed
-          // logical size and scales it to fit, since the API writes this size
-          // onto the iframe inline and CSS cannot override it.
-          width: view === 'audio' ? 1 : VIDEO_FRAME_WIDTH,
-          height: view === 'audio' ? 1 : VIDEO_FRAME_HEIGHT,
+          width: frameWidth,
+          height: frameHeight,
           startVolume: volume,
           startMuted: mustStartMuted && !muted,
+          onStateChange: (state) => onPlayerStateChangeRef.current(state),
+          onError: (message) => onPlayerErrorRef.current(message),
         })
         // A newer load superseded this one.
-        if (token !== loadToken.current) return
+        if (token !== loadToken.current) {
+          try {
+            player.destroy()
+          } catch {
+            // Ignore
+          }
+          return
+        }
 
         playerRef.current = player
+        loadedVideoId.current = source.youtubeId
         builtView.current = view
         builtTrack.current = trackId
+        endedHandledRef.current = false
+        bgResumeAttemptsRef.current = 0
         setStarted(true)
         setDuration(player.getDuration() || 0)
+        if (startSeconds > 1) {
+          player.seekTo(startSeconds, true)
+          setTime(startSeconds)
+        }
 
         if (autoplay) {
           player.playVideo()
@@ -601,11 +739,22 @@ export function Player({
         }
       } catch (e: unknown) {
         if (token !== loadToken.current) return
+        wantPlayingRef.current = false
+        keepAliveRef.current?.stop()
         setError(e instanceof Error ? e.message : youtubeErrorMessage(-1))
         setStarted(false)
       }
     },
-    [source, effectiveQuality, view, volume, muted, unmuteIfAllowed, trackId],
+    [
+      source,
+      effectiveQuality,
+      view,
+      volume,
+      muted,
+      applyAudio,
+      unmuteIfAllowed,
+      trackId,
+    ],
   )
 
   /**
@@ -627,11 +776,13 @@ export function Player({
   )
 
   const togglePlay = useCallback(() => {
-    // Not started yet: the first press starts the stream.
+    // Not started yet: the first press starts the stream (resuming from any
+    // saved playback timestamp when re-opening the app).
     const player = playerRef.current
     if (!started || !player) {
-      // This press is a user gesture, so the stream starts audible.
-      void start(true, true)
+      const startAt = resumeOffsetRef.current
+      resumeOffsetRef.current = 0
+      void start(true, true, startAt)
       return
     }
     // Decide from our own `playing` state rather than getPlayerState(). While a
@@ -639,9 +790,13 @@ export function Player({
     // state-based check would read "not playing" and call playVideo() — turning
     // a pause press into an unpause.
     if (playing) {
+      wantPlayingRef.current = false
+      keepAliveRef.current?.stop()
       player.pauseVideo()
       setPlaying(false)
     } else {
+      wantPlayingRef.current = true
+      keepAliveRef.current?.start()
       player.playVideo()
       setPlaying(true)
     }
@@ -659,6 +814,8 @@ export function Player({
     const player = playerRef.current
     if (!player) return
     stopRequested.current = true
+    wantPlayingRef.current = false
+    keepAliveRef.current?.stop()
     // Stopping is an explicit halt: a later track change must not resume.
     autoplayNext.current = false
     const videoId = source?.youtubeId
@@ -678,10 +835,13 @@ export function Player({
   }, [source?.youtubeId])
 
   const seek = useCallback((seconds: number) => {
-    const player = playerRef.current
-    if (!player) return
-    player.seekTo(seconds, true)
     setTime(seconds)
+    const player = playerRef.current
+    if (!player) {
+      resumeOffsetRef.current = seconds
+      return
+    }
+    player.seekTo(seconds, true)
   }, [])
 
   /** Moves the level. Dragging the slider is a gesture, so this also unblocks sound. */
@@ -716,8 +876,7 @@ export function Player({
 
   /**
    * Moves to the next/previous track, carrying over whether playback should
-   * continue. The intent is captured *before* the source changes, because
-   * switching tracks tears the player down.
+   * continue.
    */
   const advance = useCallback(
     (direction: 1 | -1, forcePlay = false) => {
@@ -728,46 +887,264 @@ export function Player({
       } catch {
         // A detached player throws; fall back to the React state alone.
       }
-      autoplayNext.current = shouldCarryPlayback({
-        playing,
+      const carry = shouldCarryPlayback({
+        playing: playing || wantPlayingRef.current,
         playerState: liveState,
         forced: forcePlay,
       })
+      autoplayNext.current = carry
       onAdvance(direction)
+      // When repeating a single-track list, `onAdvance` selects the same track
+      // ID, so restart it in place when playback should carry.
+      if (carry && repeat && queue.length === 1 && trackId !== null) {
+        autoplayNext.current = false
+        void start(true, false, 0)
+      }
     },
-    [onAdvance, playing],
+    [onAdvance, playing, repeat, queue.length, trackId, start],
   )
 
-  // Consume the carry-over intent once the new track's player is built.
-  useEffect(() => {
-    if (!autoplayNext.current || !source || !mountRef.current) return
-    autoplayNext.current = false
-    // No user gesture here, so the stream may have to start muted. This works in
-    // video mode too: skipping on should stay on video, not drop to audio.
-    void start(true, false)
-  }, [source, view, start])
+  /**
+   * Unified transition effect for track changes, view switches, and explicit
+   * Play requests (`playToken`).
+   *
+   * Handling all three in one place avoids competing effects tearing down or
+   * racing the shared `YT.Player` instance.
+   */
+  const seenState = useRef<{
+    trackId: number | null
+    videoId: string | null
+    view: View
+    playToken: number
+  }>({
+    trackId,
+    videoId: source?.youtubeId ?? null,
+    view,
+    playToken,
+  })
 
-  // A play request from the tracklist. This is an explicit "start this now",
-  // made with a real user gesture, so it always begins playback — unlike a skip,
-  // which carries the paused/playing state across.
-  const seenPlayToken = useRef(playToken)
+  // Persist playback position so closing and re-opening the app restores the
+  // exact timestamp in the song.
   useEffect(() => {
-    if (playToken === seenPlayToken.current) return
-    seenPlayToken.current = playToken
-    // The track-change effect above has already torn the old player down when
-    // the request also changed track; if it did not, `start` resumes in place.
-    void start(true, true)
-  }, [playToken, start])
+    if (trackId === null) return
+    writeStoredProgress(trackId, time, duration || track?.duration || 0)
+  }, [trackId, time, duration, track?.duration])
 
-  // Poll for time and end-of-track.
+  useEffect(() => {
+    const prev = seenState.current
+    const videoId = source?.youtubeId ?? null
+    const tokenChanged = playToken !== prev.playToken
+    const trackChanged = trackId !== prev.trackId
+    const viewChanged = view !== prev.view
+    const videoChanged = videoId !== prev.videoId
+
+    seenState.current = {
+      trackId,
+      videoId,
+      view,
+      playToken,
+    }
+
+    if (!tokenChanged && !trackChanged && !viewChanged && !videoChanged) {
+      return
+    }
+
+    // Track was cleared (e.g. deleted while playing) or has no playable source.
+    if (trackId === null || !source) {
+      autoplayNext.current = false
+      wantPlayingRef.current = false
+      resumeOffsetRef.current = 0
+      keepAliveRef.current?.stop()
+      if (trackId === null) {
+        destroyPlayer()
+      } else {
+        try {
+          playerRef.current?.stopVideo()
+        } catch {
+          // Ignore
+        }
+      }
+      setPlaying(false)
+      setStarted(false)
+      setTime(0)
+      setDuration(0)
+      setError(null)
+      return
+    }
+
+    // 1. Explicit Play press from tracklist, playlist header, or queue row.
+    if (tokenChanged) {
+      autoplayNext.current = false
+      resumeOffsetRef.current = 0
+      if (trackChanged || videoChanged) {
+        setTime(0)
+        setDuration(0)
+        setError(null)
+      }
+      void start(true, true, 0)
+      return
+    }
+
+    // 2. Track changed (via Next / Previous or end-of-track auto-advance).
+    if (trackChanged) {
+      const shouldPlay = autoplayNext.current
+      autoplayNext.current = false
+      resumeOffsetRef.current = 0
+      setTime(0)
+      setDuration(track?.duration ?? 0)
+      setError(null)
+      if (shouldPlay) {
+        void start(true, false, 0)
+      } else {
+        wantPlayingRef.current = false
+        keepAliveRef.current?.stop()
+        setPlaying(false)
+        setStarted(false)
+        if (playerRef.current) {
+          void start(false, false, 0)
+        }
+      }
+      return
+    }
+
+    // 3. Same track, view switched (Main <-> Video <-> Live) or source URL edited.
+    if (viewChanged || videoChanged) {
+      if (!playerRef.current && !wantPlayingRef.current && !playing) {
+        return
+      }
+      const resumePlay = wantPlayingRef.current || playing
+      const resumeAt = viewChanged && !trackChanged ? time : 0
+      void start(resumePlay, true, resumeAt)
+    }
+  }, [trackId, track?.duration, source, view, playToken, start, destroyPlayer, playing, time])
+
+  /**
+   * Handles state transitions reported by the YouTube iframe (`onStateChange`)
+   * or detected by the fallback poll.
+   *
+   * Processing `YTState.ENDED` immediately from `onStateChange` is critical for
+   * background playback: browsers throttle `setInterval` when a tab is hidden,
+   * whereas the iframe's `onStateChange` event arrives as soon as the track
+   * finishes.
+   */
+  const handleTrackEnd = useCallback(() => {
+    if (endedHandledRef.current) return
+    endedHandledRef.current = true
+    setPlaying(false)
+    if (trackId !== null && endedForId.current !== trackId) {
+      endedForId.current = trackId
+      onTrackEnded?.(trackId)
+    }
+    // Always ask `advance(1, true)` to step to the next track; `App.tsx`
+    // checks the queue, repeat, and DJ station and stops cleanly if none remain.
+    if (queue.length > 0) {
+      advance(1, true)
+      // If `onAdvance` was at the end of a non-repeating list, no track change
+      // will consume `autoplayNext`; clear it on the next macrotask if still idle.
+      window.setTimeout(() => {
+        if (endedHandledRef.current) {
+          autoplayNext.current = false
+          wantPlayingRef.current = false
+          keepAliveRef.current?.stop()
+        }
+      }, 500)
+    } else {
+      wantPlayingRef.current = false
+      keepAliveRef.current?.stop()
+    }
+  }, [trackId, onTrackEnded, queue.length, advance])
+
+  useEffect(() => {
+    onPlayerStateChangeRef.current = (state: number) => {
+      const player = playerRef.current
+      if (!player) return
+      if (stopRequested.current) {
+        stopRequested.current = false
+        setPlaying(false)
+        setTime(0)
+        return
+      }
+
+      if (state === YTState.PLAYING) {
+        endedHandledRef.current = false
+        bgResumeAttemptsRef.current = 0
+        setPlaying(true)
+        setStarted(true)
+        setError(null)
+        if (wantPlayingRef.current) keepAliveRef.current?.start()
+        const total = player.getDuration()
+        if (total > 0) setDuration(total)
+        return
+      }
+
+      if (state === YTState.ENDED) {
+        handleTrackEnd()
+        return
+      }
+
+      if (state === YTState.PAUSED) {
+        const visibilityState =
+          typeof document !== 'undefined' ? document.visibilityState : 'visible'
+        const msSinceBackgrounded =
+          lastBackgroundedAtRef.current > 0
+            ? Date.now() - lastBackgroundedAtRef.current
+            : Number.POSITIVE_INFINITY
+
+        // Mobile browsers and YouTube's embed script often emit an unsolicited
+        // PAUSED event when the user switches to another app. If the listener
+        // did not pause playback, immediately resume the stream.
+        if (
+          shouldResumeBackgroundPause({
+            wantPlaying: wantPlayingRef.current,
+            stopRequested: stopRequested.current,
+            visibilityState,
+            msSinceBackgrounded,
+            resumeAttempts: bgResumeAttemptsRef.current,
+          })
+        ) {
+          bgResumeAttemptsRef.current += 1
+          keepAliveRef.current?.start()
+          try {
+            player.playVideo()
+          } catch {
+            // Ignore
+          }
+          window.setTimeout(() => {
+            if (wantPlayingRef.current && playerRef.current) {
+              try {
+                playerRef.current.playVideo()
+              } catch {
+                // Ignore
+              }
+            }
+          }, 180)
+          return
+        }
+
+        setPlaying(false)
+      }
+    }
+
+    onPlayerErrorRef.current = (message: string) => {
+      setError(message)
+      setPlaying(false)
+      // If a broken link is encountered during continuous queue playback,
+      // skip ahead to the next track rather than stalling background music.
+      if (wantPlayingRef.current && queue.length > 1) {
+        advance(1, true)
+      } else {
+        wantPlayingRef.current = false
+        keepAliveRef.current?.stop()
+      }
+    }
+  }, [handleTrackEnd, queue.length, advance])
+
+  // Poll for progress time and act as a safety net for state changes.
   useEffect(() => {
     const id = window.setInterval(() => {
       const player = playerRef.current
       if (!player) return
 
-      // A stop request is honoured here rather than in stop(): the player can
-      // still report PLAYING for a tick after the call, which would otherwise
-      // immediately overwrite the stopped state.
       if (stopRequested.current) {
         stopRequested.current = false
         setPlaying(false)
@@ -780,23 +1157,121 @@ export function Player({
       if (total > 0) setDuration(total)
 
       const state = player.getPlayerState()
-      // BUFFERING is deliberately ignored: it says nothing about whether the
-      // user wants audio, and treating it as "playing" would flip the button
-      // back to Pause mid-seek.
-      if (state === YTState.PLAYING) setPlaying(true)
-      else if (state === YTState.PAUSED) setPlaying(false)
-      else if (state === YTState.ENDED) {
-        setPlaying(false)
-        if (trackId !== null && endedForId.current !== trackId) {
-          endedForId.current = trackId
-          onTrackEnded?.(trackId)
-        }
-        // A track reaching its end always continues into the next.
-        if (queue.length > 1) advance(1, true)
+      if (state === YTState.PLAYING) {
+        endedHandledRef.current = false
+        setPlaying(true)
+      } else if (state === YTState.PAUSED) {
+        onPlayerStateChangeRef.current(YTState.PAUSED)
+      } else if (state === YTState.ENDED) {
+        handleTrackEnd()
       }
     }, 250)
     return () => window.clearInterval(id)
-  }, [queue.length, advance, trackId, onTrackEnded])
+  }, [handleTrackEnd])
+
+  // Keep background playback alive across tab switches and mobile app switches.
+  useEffect(() => {
+    const onBackground = () => {
+      lastBackgroundedAtRef.current = Date.now()
+      bgResumeAttemptsRef.current = 0
+      const player = playerRef.current
+      if (!player || !wantPlayingRef.current) return
+      // Pinning the lowest video tier while hidden avoids mobile GPU video
+      // decoder suspension when the browser leaves the foreground.
+      try {
+        player.setPlaybackQuality(quality)
+      } catch {
+        // Ignore
+      }
+      keepAliveRef.current?.start()
+      try {
+        const state = player.getPlayerState()
+        if (state === YTState.PAUSED) {
+          player.playVideo()
+        } else if (state === YTState.ENDED) {
+          handleTrackEnd()
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        onBackground()
+      } else if (document.visibilityState === 'visible') {
+        bgResumeAttemptsRef.current = 0
+        const player = playerRef.current
+        if (!player) return
+        try {
+          const state = player.getPlayerState()
+          if (state === YTState.ENDED) {
+            handleTrackEnd()
+          } else if (state === YTState.PLAYING) {
+            setPlaying(true)
+          } else if (state === YTState.PAUSED && !wantPlayingRef.current) {
+            setPlaying(false)
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', onBackground)
+    window.addEventListener('blur', onBackground)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', onBackground)
+      window.removeEventListener('blur', onBackground)
+    }
+  }, [quality, handleTrackEnd])
+
+  // OS lock-screen, notification-shade, and hardware media key integration.
+  useEffect(() => {
+    syncMediaSessionMetadata(track, coverVideoId)
+  }, [track, coverVideoId])
+
+  useEffect(() => {
+    syncMediaSessionPlaybackState(playing, track !== null)
+  }, [playing, track])
+
+  useEffect(() => {
+    if (started && duration > 0) {
+      syncMediaSessionPosition(time, duration)
+    }
+  }, [started, time, duration])
+
+  useEffect(() => {
+    if (!track) return
+    return bindMediaSessionHandlers({
+      onPlay: () => {
+        wantPlayingRef.current = true
+        keepAliveRef.current?.start()
+        const player = playerRef.current
+        if (!started || !player) {
+          void start(true, true)
+        } else {
+          player.playVideo()
+          setPlaying(true)
+        }
+      },
+      onPause: () => {
+        wantPlayingRef.current = false
+        keepAliveRef.current?.stop()
+        const player = playerRef.current
+        if (player) player.pauseVideo()
+        setPlaying(false)
+      },
+      onPrevious:
+        onAdvance && queue.length > 0 ? () => advance(-1) : undefined,
+      onNext:
+        onAdvance && queue.length > 0 ? () => advance(1) : undefined,
+      onSeekTo: started ? (seconds) => seek(seconds) : undefined,
+      onStop: started ? () => stop() : undefined,
+    })
+  }, [track, started, start, onAdvance, queue.length, advance, seek, stop])
 
   /**
    * Reports the stream's real length back to the library.
@@ -816,113 +1291,12 @@ export function Player({
 
   useEffect(() => {
     if (!track || !onDurationResolved) return
-    // The guard this effect was missing.
-    //
-    // The reset effects above clear `duration` on a track change, but they do it
-    // *in the same commit* as the render that already has the new track. So on
-    // that render `track` is the incoming track while `duration` is still the
-    // outgoing one, and without this check the outgoing track's length gets
-    // written onto the incoming track. It looked correct afterwards only because
-    // pressing play later reported the real number and quietly overwrote it.
-    //
-    // `builtTrack` is the one thing that is unambiguous: it holds the id of the
-    // track the live player was actually constructed for, and it is cleared the
-    // moment the old player is torn down.
     if (builtTrack.current !== track.id) return
     const total = Math.round(duration)
     if (total <= 0 || total === reportedDuration.current) return
     reportedDuration.current = total
     onDurationResolved(track.id, total)
   }, [duration, track, onDurationResolved])
-
-  /**
-   * Rebuilds the player for a view, restoring position and playback.
-   *
-   * Both directions need a rebuild: audio and video stream different videos, so
-   * the existing instance cannot simply be resized. Video also needs a bigger
-   * frame, which is another reason YouTube's player cannot be reused here.
-   */
-  const rebuildFor = useCallback(
-    (next: View, at: number, autoplay: boolean) => {
-      const target = pickSourceForView(track?.sources ?? [], next)
-      const host = mountRef.current
-      if (!target || !host) return
-      const token = ++loadToken.current
-      void createPlayer(host, {
-        videoId: target.youtubeId,
-        // Video mode lets YouTube choose the rendition; audio mode pins a tier.
-        quality: next === 'video' ? AUTO_QUALITY : quality,
-        // One fixed logical size, scaled to fit by the resize observer.
-        width: next === 'audio' ? 1 : VIDEO_FRAME_WIDTH,
-        height: next === 'audio' ? 1 : VIDEO_FRAME_HEIGHT,
-        // The switch itself is a user gesture, so this one stays audible.
-        startVolume: volume,
-        startMuted: muted,
-      })
-        .then((player) => {
-          if (token !== loadToken.current) return
-          playerRef.current = player
-          builtView.current = next
-          builtTrack.current = trackId
-          setStarted(true)
-          setDuration(player.getDuration() || 0)
-          if (at > 1) player.seekTo(at, true)
-          setTime(at)
-          if (autoplay) {
-            player.playVideo()
-            setPlaying(true)
-            // The gesture is spent by the time this promise settles, so a
-            // browser may refuse audible autoplay here exactly as it does on a
-            // skip. Raise the sound and report it if it was refused, rather
-            // than leaving the switch silently muted.
-            if (!muted) unmuteIfAllowed(player)
-          }
-        })
-        .catch((e: unknown) => {
-          setError(e instanceof Error ? e.message : youtubeErrorMessage(-1))
-        })
-    },
-    [track, quality, volume, muted, unmuteIfAllowed, trackId],
-  )
-
-  /**
-   * Rebuilds when the audio/video choice changes.
-   *
-   * Driven by the view value rather than by a click, so both routes into the
-   * switch behave identically. It only applies to a player already built for
-   * *this* track:
-   * a track change builds through the normal load path instead, and guessing
-   * wrong here would race it and produce two players.
-   *
-   * The previous guard compared source IDs, which was wrong: the whole point of
-   * switching views is that the two stream different videos, so the ID always
-   * differed and the rebuild was skipped — the player was torn down by the
-   * effect above and the switch silently stopped playback. Comparing the track
-   * is what actually distinguishes the two cases.
-   *
-   * `wasPlaying` carries the previous state: playing continues automatically
-   * (the toggle click is a user gesture), while stopped stays stopped and waits
-   * for a Play press.
-   */
-  useEffect(() => {
-    if (builtView.current === null) return
-    if (builtView.current === view) return
-    if (builtTrack.current !== trackId) return
-
-    const wasPlaying = playing
-    const at = time
-    destroyPlayer()
-    setStarted(false)
-    // Wait for React to swap the mount node before re-creating the player.
-    const timer = window.setTimeout(
-      () => rebuildFor(view, at, wasPlaying),
-      0,
-    )
-    return () => window.clearTimeout(timer)
-    // `playing`/`time` are read as the state at the moment of the switch; adding
-    // them would re-run this effect on every poll tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, trackId, rebuildFor, destroyPlayer])
 
   const toggleFullscreen = useCallback(() => {
     // There is no picture to watch in audio mode, and the stage is a one-pixel
