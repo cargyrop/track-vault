@@ -221,6 +221,8 @@ export function App() {
   // it and starts the stream, so a play press does not just load the track and
   // wait for a second press.
   const [playToken, setPlayToken] = useState(0)
+  const [togglePlayToken, setTogglePlayToken] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [cardId, setCardId] = useState<number | null>(null)
   // Opened as the form, not the read view: the player's empty Info and Lyrics
   // panes ask for what is missing, so they skip the extra press on Edit.
@@ -981,22 +983,29 @@ export function App() {
       // same pass — it has been heard, however it was chosen.
       shuffleCycle.current = notePlayed(shuffleCycle.current, track.id)
       setPlayingTrack(track)
+      setIsPlaying(true)
       setPlayToken((token) => token + 1)
     },
     [queue, snapshotActiveList],
   )
 
   /**
-   * Starts the whole list — the info panel's Play button.
+   * Starts or pauses the whole list — the list header's Play/Pause button.
    *
-   * Which track that is depends on the shuffle: with it on, the list opens on a
-   * randomly drawn row rather than its first, because a Play that always began
-   * at the top would be the one part of the app the shuffle button does not
-   * reach. The decision itself lives in `lib/shuffle.ts` so it cannot drift from
-   * what Next does.
+   * When this list is already the audible one and has a loaded track, pressing
+   * the button toggles pause/resume in place. Otherwise it snapshots the rows
+   * on screen and starts from the first row (or a drawn row when shuffle is on).
    */
   const playList = useCallback(() => {
     if (!queue.length) return
+    const alreadyAudible =
+      activeTracklist !== null &&
+      sameSelection(activeTracklist.selection, api.playlistSelection)
+    if (alreadyAudible && playingTrack !== null) {
+      setIsPlaying((prev) => !prev)
+      setTogglePlayToken((token) => token + 1)
+      return
+    }
     // Pressing Play makes these rows the audible list — with the shuffle,
     // repeat and DJ settings as they stand — and browsing afterwards leaves
     // them alone until the next Play press.
@@ -1011,8 +1020,16 @@ export function App() {
     const drawn = queue.find((track) => track.id === next) ?? queue[0]
     shuffleCycle.current = notePlayed(shuffleCycle.current, drawn.id)
     setPlayingTrack(drawn)
+    setIsPlaying(true)
     setPlayToken((token) => token + 1)
-  }, [queue, playingTrack, shuffle, snapshotActiveList])
+  }, [
+    queue,
+    activeTracklist,
+    api.playlistSelection,
+    playingTrack,
+    shuffle,
+    snapshotActiveList,
+  ])
 
   // Refresh the active queue snapshot once the library finishes loading, and
   // fall back to `trackvault.playingId` if an older session stored only the ID.
@@ -1344,6 +1361,7 @@ export function App() {
         tracks={rows}
         description={selectedPlaylist?.description ?? null}
         isAudible={isAudibleList}
+        isPlaying={isPlaying}
         onPlayList={rows.length ? playList : null}
         shuffle={shuffle}
         repeat={repeat}
@@ -1640,6 +1658,8 @@ export function App() {
           track={playingTrack}
           view={playbackView}
           playToken={playToken}
+          toggleToken={togglePlayToken}
+          onPlayingChange={setIsPlaying}
           queue={playerQueue}
           onAdvance={advance}
           onViewChange={setPlaybackView}
