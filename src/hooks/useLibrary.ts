@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Library } from '../lib/db'
 import { fetchAgentStatus } from '../lib/agentClient'
 import { reportSignature, type MergeReport } from '../lib/agentInbox'
@@ -67,6 +67,150 @@ function playlistsInFolder(
  * reloaded.
  */
 const SEEN_REPORT_KEY = 'trackvault.seenMergeReport'
+const SELECTION_KEY = 'trackvault.selection'
+const SNAPSHOT_KEY = 'trackvault.librarySnapshot'
+
+export function readStoredSelection(raw: string | null): PlaylistSelection {
+  if (!raw) return { kind: 'all' }
+  try {
+    const parsed = JSON.parse(raw) as Partial<PlaylistSelection>
+    if (
+      parsed.kind === 'playlist' &&
+      typeof parsed.playlistId === 'number' &&
+      Number.isFinite(parsed.playlistId)
+    ) {
+      return { kind: 'playlist', playlistId: parsed.playlistId }
+    }
+    if (
+      parsed.kind === 'folder' &&
+      typeof parsed.folderId === 'number' &&
+      Number.isFinite(parsed.folderId)
+    ) {
+      return { kind: 'folder', folderId: parsed.folderId }
+    }
+  } catch {
+    // Fall back to 'all'.
+  }
+  return { kind: 'all' }
+}
+
+/**
+ * Resolves the initial playlist/folder selection on launch.
+ *
+ * Prefers the explicitly viewed playlist/folder (`trackvault.selection`), and
+ * if that was left on `'all'`, falls back to the playlist/folder that was
+ * actively playing (`trackvault.activeTracklist`) so re-opening the app brings
+ * the listener back to what they were playing rather than `'All tracks'`.
+ */
+export function readInitialSelection(): PlaylistSelection {
+  if (typeof window === 'undefined') return { kind: 'all' }
+  try {
+    const direct = readStoredSelection(window.localStorage.getItem(SELECTION_KEY))
+    if (direct.kind !== 'all') return direct
+    const rawActive = window.localStorage.getItem('trackvault.activeTracklist')
+    if (rawActive) {
+      const parsed = JSON.parse(rawActive) as {
+        selection?: Partial<PlaylistSelection>
+      }
+      if (parsed?.selection) {
+        const activeSel = readStoredSelection(JSON.stringify(parsed.selection))
+        if (activeSel.kind !== 'all') return activeSel
+      }
+    }
+    return direct
+  } catch {
+    return { kind: 'all' }
+  }
+}
+
+interface LibrarySnapshotCache {
+  tracks: TrackWithSources[]
+  totalCount: number
+  playlists: Playlist[]
+  folders: PlaylistFolder[]
+  facets: Facets
+  selection: PlaylistSelection
+  playlistTracks: TrackWithSources[]
+}
+
+function sameSelectionCache(a: PlaylistSelection, b: PlaylistSelection): boolean {
+  if (a.kind !== b.kind) return false
+  if (a.kind === 'playlist' && b.kind === 'playlist') {
+    return a.playlistId === b.playlistId
+  }
+  if (a.kind === 'folder' && b.kind === 'folder') {
+    return a.folderId === b.folderId
+  }
+  return true
+}
+
+function readLibrarySnapshot(): LibrarySnapshotCache | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(SNAPSHOT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<LibrarySnapshotCache>
+    if (
+      !Array.isArray(parsed.tracks) ||
+      !Array.isArray(parsed.playlists) ||
+      !Array.isArray(parsed.folders)
+    ) {
+      return null
+    }
+    return {
+      tracks: parsed.tracks,
+      totalCount:
+        typeof parsed.totalCount === 'number'
+          ? parsed.totalCount
+          : parsed.tracks.length,
+      playlists: parsed.playlists,
+      folders: parsed.folders,
+      facets: parsed.facets ?? { genres: [], artists: [], albums: [] },
+      selection: readStoredSelection(JSON.stringify(parsed.selection)),
+      playlistTracks: Array.isArray(parsed.playlistTracks)
+        ? parsed.playlistTracks
+        : [],
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeLibrarySnapshot(snapshot: LibrarySnapshotCache): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot))
+  } catch {
+    // Storage quota or private mode: ignore.
+  }
+}
+
+async function fetchSelectionMembership(
+  library: Library,
+  selection: PlaylistSelection,
+  folders: PlaylistFolder[],
+  playlists: Playlist[],
+): Promise<TrackWithSources[]> {
+  if (selection.kind === 'all') return []
+  if (selection.kind === 'playlist') {
+    const entries = await library.listPlaylistTracks(selection.playlistId)
+    return entries.map((e) => e.track)
+  }
+  const members = playlistsInFolder(selection.folderId, folders, playlists)
+  const lists = await Promise.all(
+    members.map((p) => library.listPlaylistTracks(p.id)),
+  )
+  const seen = new Set<number>()
+  const out: TrackWithSources[] = []
+  for (const entries of lists) {
+    for (const entry of entries) {
+      if (seen.has(entry.trackId)) continue
+      seen.add(entry.trackId)
+      out.push(entry.track)
+    }
+  }
+  return out
+}
 
 function readSeenReport(): string | null {
   try {
@@ -87,19 +231,56 @@ function rememberSeenReport(signature: string): void {
 }
 
 export function useLibrary(library: Library | null) {
-  const [tracks, setTracks] = useState<TrackWithSources[]>([])
-  const [playlists, setPlaylists] = useState<Playlist[]>([])
-  const [folders, setFolders] = useState<PlaylistFolder[]>([])
-  const [facets, setFacets] = useState<Facets>({
-    genres: [],
-    artists: [],
-    albums: [],
-  })
+  const initialCache = useRef<LibrarySnapshotCache | null | undefined>(undefined)
+  if (initialCache.current === undefined) {
+    initialCache.current = readLibrarySnapshot()
+  }
+  const cached = initialCache.current
+  const [playlistSelection, setPlaylistSelection] = useState<PlaylistSelection>(
+    () => readInitialSelection(),
+  )
+  const selectionRef = useRef<PlaylistSelection>(playlistSelection)
+  selectionRef.current = playlistSelection
+
+  const [tracks, setTracks] = useState<TrackWithSources[]>(
+    () => cached?.tracks ?? [],
+  )
+  const [totalCount, setTotalCount] = useState<number>(
+    () => cached?.totalCount ?? 0,
+  )
+  const [playlists, setPlaylists] = useState<Playlist[]>(
+    () => cached?.playlists ?? [],
+  )
+  const [folders, setFolders] = useState<PlaylistFolder[]>(
+    () => cached?.folders ?? [],
+  )
+  const [facets, setFacets] = useState<Facets>(
+    () =>
+      cached?.facets ?? {
+        genres: [],
+        artists: [],
+        albums: [],
+      },
+  )
   const [filter, setFilter] = useState<LibraryFilter>(EMPTY_FILTER)
-  const [playlistSelection, setPlaylistSelection] = useState<PlaylistSelection>({
-    kind: 'all',
-  })
-  const [playlistTracks, setPlaylistTracks] = useState<TrackWithSources[]>([])
+  const filterRef = useRef<LibraryFilter>(filter)
+  filterRef.current = filter
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SELECTION_KEY,
+        JSON.stringify(playlistSelection),
+      )
+    } catch {
+      // Storage unavailable.
+    }
+  }, [playlistSelection])
+  const [playlistTracks, setPlaylistTracks] = useState<TrackWithSources[]>(() =>
+    cached && sameSelectionCache(cached.selection, playlistSelection)
+      ? cached.playlistTracks
+      : [],
+  )
   const [error, setError] = useState<string | null>(null)
   /**
    * What the last file operation did, said out loud.
@@ -110,7 +291,7 @@ export function useLibrary(library: Library | null) {
    * a finished import is not a failure, even when it has a caveat.
    */
   const [notice, setNotice] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState<boolean>(() => cached === null)
   /**
    * What the last AI batch did, and anything it could not do.
    *
@@ -123,13 +304,15 @@ export function useLibrary(library: Library | null) {
   const [inboxPending, setInboxPending] = useState(false)
 
   const refreshFacets = useCallback(async () => {
-    if (!library) return
+    if (!library) return { genres: [], artists: [], albums: [] }
     const [genres, artists, albums] = await Promise.all([
       library.listGenres(),
       library.listArtists(),
       library.listAlbums(),
     ])
-    setFacets({ genres, artists, albums })
+    const nextFacets = { genres, artists, albums }
+    setFacets(nextFacets)
+    return nextFacets
   }, [library])
 
   const refresh = useCallback(
@@ -140,17 +323,67 @@ export function useLibrary(library: Library | null) {
       if (fromDisk && 'reload' in library) {
         await (library as unknown as { reload(): Promise<void> }).reload()
       }
-      const [nextTracks, nextPlaylists, nextFolders] = await Promise.all([
-        library.listTracks(filter),
-        library.listPlaylists(),
-        library.listFolders(),
-      ])
+      const currentFilter = filterRef.current
+      const isUnfiltered =
+        !currentFilter.search &&
+        !currentFilter.artist &&
+        !currentFilter.album &&
+        currentFilter.genres.length === 0 &&
+        !currentFilter.sourceKind &&
+        !currentFilter.unfiledOnly &&
+        !currentFilter.hasLiveSource
+      const [nextTracks, nextPlaylists, nextFolders, allTracks, nextFacets] =
+        await Promise.all([
+          library.listTracks(currentFilter),
+          library.listPlaylists(),
+          library.listFolders(),
+          isUnfiltered ? Promise.resolve(null) : library.listTracks(EMPTY_FILTER),
+          refreshFacets(),
+        ])
+
+      const currentSel = selectionRef.current
+      let effectiveSelection: PlaylistSelection = currentSel
+      if (
+        currentSel.kind === 'playlist' &&
+        !nextPlaylists.some((p) => p.id === currentSel.playlistId)
+      ) {
+        effectiveSelection = { kind: 'all' }
+      } else if (
+        currentSel.kind === 'folder' &&
+        !nextFolders.some((f) => f.id === currentSel.folderId)
+      ) {
+        effectiveSelection = { kind: 'all' }
+      }
+
+      const nextPlaylistTracks = await fetchSelectionMembership(
+        library,
+        effectiveSelection,
+        nextFolders,
+        nextPlaylists,
+      )
+
+      const resolvedTotal = allTracks ? allTracks.length : nextTracks.length
       setTracks(nextTracks)
+      setTotalCount(resolvedTotal)
       setPlaylists(nextPlaylists)
       setFolders(nextFolders)
-      await refreshFacets()
+      setPlaylistTracks(nextPlaylistTracks)
+      if (!sameSelectionCache(effectiveSelection, selectionRef.current)) {
+        selectionRef.current = effectiveSelection
+        setPlaylistSelection(effectiveSelection)
+      }
+
+      writeLibrarySnapshot({
+        tracks: allTracks ?? nextTracks,
+        totalCount: resolvedTotal,
+        playlists: nextPlaylists,
+        folders: nextFolders,
+        facets: nextFacets,
+        selection: effectiveSelection,
+        playlistTracks: nextPlaylistTracks,
+      })
     },
-    [library, filter, refreshFacets],
+    [library, refreshFacets],
   )
 
   /**
@@ -164,39 +397,20 @@ export function useLibrary(library: Library | null) {
    */
   const refreshPlaylistTracks = useCallback(async () => {
     if (!library) return
-    const selection = playlistSelection
-    if (selection.kind === 'all') {
-      setPlaylistTracks([])
-      return
-    }
-    if (selection.kind === 'playlist') {
-      const entries = await library.listPlaylistTracks(selection.playlistId)
-      setPlaylistTracks(entries.map((e) => e.track))
-      return
-    }
-    const members = playlistsInFolder(selection.folderId, folders, playlists)
-    const lists = await Promise.all(
-      members.map((p) => library.listPlaylistTracks(p.id)),
+    const nextPlaylistTracks = await fetchSelectionMembership(
+      library,
+      playlistSelection,
+      folders,
+      playlists,
     )
-    const seen = new Set<number>()
-    const out: TrackWithSources[] = []
-    for (const entries of lists) {
-      for (const entry of entries) {
-        if (seen.has(entry.trackId)) continue
-        seen.add(entry.trackId)
-        out.push(entry.track)
-      }
-    }
-    setPlaylistTracks(out)
+    setPlaylistTracks(nextPlaylistTracks)
   }, [library, playlistSelection, folders, playlists])
 
   useEffect(() => {
     let cancelled = false
     if (!library) return
-    setLoading(true)
-    library
-      .migrate()
-      .then(() => refresh(true))
+    if (!cached) setLoading(true)
+    refresh(false)
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
       })
@@ -206,7 +420,27 @@ export function useLibrary(library: Library | null) {
     return () => {
       cancelled = true
     }
-  }, [library, refresh])
+  }, [library, refresh, cached])
+
+  /**
+   * Re-queries tracks in memory when only the filter changes, without
+   * re-downloading `library.json` from disk or resetting the poll timer.
+   */
+  useEffect(() => {
+    if (!library) return
+    let cancelled = false
+    void library
+      .listTracks(filter)
+      .then((nextTracks) => {
+        if (!cancelled) setTracks(nextTracks)
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [library, filter])
 
   /**
    * Polls the server so edits made outside the app appear automatically.
@@ -723,6 +957,7 @@ export function useLibrary(library: Library | null) {
   return useMemo(
     () => ({
       tracks,
+      totalCount,
       playlists,
       folders,
       playlistTracks,
@@ -774,6 +1009,7 @@ export function useLibrary(library: Library | null) {
     }),
     [
       tracks,
+      totalCount,
       playlists,
       folders,
       playlistTracks,

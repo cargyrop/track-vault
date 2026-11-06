@@ -82,7 +82,3 @@ export function useLayout(): LayoutMode {
   return mode
 }
 
-/** True when the app is showing one screen at a time. */
-export function isSinglePane(mode: LayoutMode): boolean {
-  return mode !== 'desktop'
-}
