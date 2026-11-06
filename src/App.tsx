@@ -23,7 +23,11 @@ import { ChevronLeftIcon } from './components/icons'
 import { plural } from './lib/format'
 import { useFolderExpansion } from './hooks/useFolderExpansion'
 import { useLayout } from './hooks/useLayout'
-import { useLibrary } from './hooks/useLibrary'
+import {
+  readInitialSelection,
+  useLibrary,
+  type PlaylistSelection,
+} from './hooks/useLibrary'
 import { AgentBanner } from './components/AgentBanner'
 import { LinkHealthDialog } from './components/LinkHealthDialog'
 import { ReplaceLibraryDialog } from './components/ReplaceLibraryDialog'
@@ -32,8 +36,7 @@ import {
   useLyricsBackfill,
   type LyricsBackfillSummary,
 } from './hooks/useLyricsBackfill'
-import { Library } from './lib/db'
-import { createDefaultDriver } from './lib/drivers'
+import type { Library } from './lib/db'
 import { createHttpTransport, JsonLibrary } from './lib/jsonLibrary'
 import type {
   LibraryFilter,
@@ -66,7 +69,6 @@ import {
   sortTracks,
   type SortState,
 } from './lib/trackSort'
-import type { PlaylistSelection } from './hooks/useLibrary'
 import type { ContextMenuItem } from './components/ContextMenu'
 
 /** The list a selection names, for the header and for "playing from …". */
@@ -194,8 +196,22 @@ export function App() {
   const [dialogOpen, setDialogOpen] = useState(false)
   // The track the player is on, and the track whose card is open. They are
   // deliberately separate: clicking a row opens the card, and only pressing a
-  // row's play button changes what is playing.
-  const [playingTrack, setPlayingTrack] = useState<TrackWithSources | null>(null)
+  // row's play button changes what is playing. Restored synchronously on boot
+  // so re-opening the app immediately shows the last played track at 0ms.
+  const [playingTrack, setPlayingTrack] = useState<TrackWithSources | null>(
+    () => {
+      const stored = readStored<TrackWithSources | null>(
+        'trackvault.playingTrack',
+        null,
+      )
+      return stored &&
+        typeof stored.id === 'number' &&
+        typeof stored.title === 'string' &&
+        Array.isArray(stored.sources)
+        ? stored
+        : null
+    },
+  )
   // Bumped whenever the tracklist asks for a track to play. The player watches
   // it and starts the stream, so a play press does not just load the track and
   // wait for a second press.
@@ -220,8 +236,12 @@ export function App() {
   // The two tracklist controls. Shuffle decides *what plays next* — it leaves
   // the list alone — and repeat decides whether the sequence starts again when
   // it runs out or stops. See `lib/shuffle.ts` for why the list must not move.
-  const [shuffle, setShuffle] = useState(false)
-  const [repeat, setRepeat] = useState(false)
+  const [shuffle, setShuffle] = useState(
+    () => readStored<boolean>('trackvault.shuffle', false) === true,
+  )
+  const [repeat, setRepeat] = useState(
+    () => readStored<boolean>('trackvault.repeat', false) === true,
+  )
   // DJ mode: when the list runs out, suggested songs drafted from what is
   // playing continue instead of stopping. The session is the picks in draft
   // order — heard ones stay for Previous — so it is never spliced, only
@@ -247,10 +267,16 @@ export function App() {
   // playlists never changes what plays, and the "Now playing …" line under
   // the filters can put the audible list back on screen. Only a new Play
   // press replaces it; row play snapshots the list the row was in.
-  const [activeTracklist, setActiveTracklist] = useState<ActiveTracklist | null>(null)
+  const [activeTracklist, setActiveTracklist] = useState<ActiveTracklist | null>(
+    () => readStored<ActiveTracklist | null>('trackvault.activeTracklist', null),
+  )
   // Full rows at snapshot time, so tracks filtered out of every visible list
   // afterwards still resolve for the player.
-  const [activeSnapshot, setActiveSnapshot] = useState<TrackWithSources[]>([])
+  const [activeSnapshot, setActiveSnapshot] = useState<TrackWithSources[]>(() => {
+    const stored = readStored<TrackWithSources[]>('trackvault.activeSnapshot', [])
+    return Array.isArray(stored) ? stored : []
+  })
+  const sessionRestoredRef = useRef(false)
   /**
    * The shape of the window, and where in the app we are.
    *
@@ -262,13 +288,20 @@ export function App() {
    * playlist" press all move through one rule.
    */
   const layout = useLayout()
-  const [nav, dispatchNav] = useReducer(reduceNav, INITIAL_NAV, () =>
-    readNav(
+  const [nav, dispatchNav] = useReducer(reduceNav, INITIAL_NAV, () => {
+    const base = readNav(
       typeof window === 'undefined'
         ? null
         : window.localStorage.getItem('trackvault.nav'),
-    ),
-  )
+    )
+    if (typeof window !== 'undefined') {
+      const sel = readInitialSelection()
+      if (sel.kind !== 'all') {
+        return { ...base, listOpen: true }
+      }
+    }
+    return base
+  })
   // Which face the track's panel shows. Remembered, because a reader who wants
   // the words usually wants them again next track.
   const [pane, setPane] = useState<MediaPane>(() =>
@@ -286,30 +319,46 @@ export function App() {
   const singlePane = layout !== 'desktop'
 
   useEffect(() => {
-    // The library lives in a plain JSON file on disk, served by the local dev
-    // server. That means every browser sees the same data, and the file can be
-    // edited or handed to an AI assistant to enrich missing fields.
-    createHttpTransport()
-      .load()
-      .then(async () => {
-        const instance = new JsonLibrary(createHttpTransport())
-        await instance.migrate()
+    const connectSql = () =>
+      Promise.all([import('./lib/db'), import('./lib/drivers')]).then(
+        async ([{ Library: SqlLibrary }, { createDefaultDriver }]) => {
+          const driver = await createDefaultDriver()
+          const sqlInstance = new SqlLibrary(driver)
+          await sqlInstance.migrate()
+          writeStored('trackvault.storageBackend', 'sql')
+          setLibrary(sqlInstance)
+        },
+      )
+
+    const connectJson = () => {
+      const instance = new JsonLibrary(createHttpTransport())
+      return instance.migrate().then(() => {
+        writeStored('trackvault.storageBackend', 'json')
         setLibrary(instance as unknown as Library)
       })
-      .catch(() => {
-        // No local file API available (e.g. the file was opened directly, or
-        // the preview server is gone). Fall back to a browser-local SQLite so
-        // the app still works.
-        return createDefaultDriver()
-          .then(async (driver) => {
-            const instance = new Library(driver)
-            await instance.migrate()
-            setLibrary(instance)
-          })
-          .catch((e: unknown) =>
-            setBootError(e instanceof Error ? e.message : String(e)),
-          )
-      })
+    }
+
+    const host =
+      typeof window !== 'undefined' ? window.location.hostname : 'localhost'
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1'
+    const preferSql =
+      !isLocalHost &&
+      readStored<string | null>('trackvault.storageBackend', null) === 'sql'
+
+    if (preferSql) {
+      // Hosted deployment where `/api/library` is known to be absent: open the
+      // browser-local database directly without waiting on a failed HTTP request.
+      connectSql().catch((e: unknown) =>
+        setBootError(e instanceof Error ? e.message : String(e)),
+      )
+      return
+    }
+
+    connectJson().catch(() =>
+      connectSql().catch((e: unknown) =>
+        setBootError(e instanceof Error ? e.message : String(e)),
+      ),
+    )
   }, [])
 
   const api = useLibrary(library)
@@ -929,6 +978,26 @@ export function App() {
     setPlayToken((token) => token + 1)
   }, [queue, playingTrack, shuffle, snapshotActiveList])
 
+  // Refresh the active queue snapshot once the library finishes loading, and
+  // fall back to `trackvault.playingId` if an older session stored only the ID.
+  useEffect(() => {
+    if (api.loading || sessionRestoredRef.current) return
+    sessionRestoredRef.current = true
+    const storedPlayingId = readStored<number | null>('trackvault.playingId', null)
+    if (activeTracklist && activeSnapshot.length === 0) {
+      const resolved: TrackWithSources[] = []
+      for (const id of activeTracklist.trackIds) {
+        const match = knownTracks.get(id)
+        if (match) resolved.push(match)
+      }
+      if (resolved.length > 0) setActiveSnapshot(resolved)
+    }
+    if (playingTrack === null && typeof storedPlayingId === 'number') {
+      const restored = knownTracks.get(storedPlayingId)
+      if (restored) setPlayingTrack(restored)
+    }
+  }, [api.loading, activeTracklist, activeSnapshot.length, knownTracks, playingTrack])
+
   useEffect(() => {
     writeStored('trackvault.nav', nav)
   }, [nav])
@@ -940,6 +1009,27 @@ export function App() {
   useEffect(() => {
     writeStored('trackvault.sort', sort)
   }, [sort])
+
+  useEffect(() => {
+    writeStored('trackvault.shuffle', shuffle)
+  }, [shuffle])
+
+  useEffect(() => {
+    writeStored('trackvault.repeat', repeat)
+  }, [repeat])
+
+  useEffect(() => {
+    writeStored('trackvault.activeTracklist', activeTracklist)
+  }, [activeTracklist])
+
+  useEffect(() => {
+    writeStored('trackvault.activeSnapshot', activeSnapshot)
+  }, [activeSnapshot])
+
+  useEffect(() => {
+    writeStored('trackvault.playingTrack', playingTrack)
+    writeStored('trackvault.playingId', playingTrack ? playingTrack.id : null)
+  }, [playingTrack])
 
   /**
    * One history entry per screen, so the back gesture is the app's own.
@@ -1077,15 +1167,6 @@ export function App() {
       setReplaceFile(null)
     }
   }, [api, replaceFile, backupBeforeReplace, showFileToast])
-
-  if (bootError) {
-    return (
-      <main className="boot">
-        <h1>TrackVault could not start</h1>
-        <p className="error">{bootError}</p>
-      </main>
-    )
-  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1278,7 +1359,7 @@ export function App() {
           emptyLabel={
             filtering
               ? 'No tracks match these filters. Remove one below the search box to widen the list.'
-              : api.tracks.length === 0
+              : api.totalCount === 0
                 ? 'This library is empty. Add a track with the button at the top right, or bring a whole library in with Import on the You screen.'
                 : 'This list is empty. Add tracks to it from any row\u2019s \u22ef menu, or drag one in.'
           }
@@ -1330,7 +1411,7 @@ export function App() {
     folders: api.folders,
     playlists: api.playlists,
     selection: api.playlistSelection,
-    totalCount: api.tracks.length,
+    totalCount: api.totalCount,
     expanded: treeFolders.expanded,
     onToggleFolder: treeFolders.toggleFolder,
     onOpenFolder: treeFolders.openFolder,
@@ -1351,6 +1432,15 @@ export function App() {
     onMoveFolder: (id: number, parentId: number | null) =>
       void api.moveFolder(id, parentId),
     onAddTrackToPlaylist: handleAddToPlaylist,
+  }
+
+  if (bootError) {
+    return (
+      <main className="boot">
+        <h1>TrackVault could not start</h1>
+        <p className="error">{bootError}</p>
+      </main>
+    )
   }
 
   return (
@@ -1429,7 +1519,7 @@ export function App() {
                 folders={api.folders}
                 playlists={api.playlists}
                 selection={selection}
-                totalCount={api.tracks.length}
+                totalCount={api.totalCount}
                 onOpen={openList}
                 onCreateFolder={(name, parentId) =>
                   void api.createFolder(name, parentId)
@@ -1765,7 +1855,7 @@ export function App() {
                   : 'this browser’s own storage (SQLite in IndexedDB)'
               }
               counts={{
-                tracks: api.tracks.length,
+                tracks: api.totalCount,
                 playlists: api.playlists.length,
                 folders: api.folders.length,
               }}
