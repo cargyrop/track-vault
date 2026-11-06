@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { AddTrackDialog } from './components/AddTrackDialog'
 import { LibraryBrowser } from './components/LibraryBrowser'
 import { ListHeader } from './components/ListHeader'
@@ -1874,6 +1875,8 @@ export function App() {
         open={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
       />
+
+      <Analytics />
     </div>
   )
 }
