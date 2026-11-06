@@ -35,7 +35,7 @@ the comments explain intent, and new code should too.
 | `src/lib/jsonLibrary.ts` | `JsonLibrary`, the JSON-file store (local browser launcher). Same interface, different storage. |
 | `src/lib/libraryImport.ts` | `normalise()` — repairs anything read from disk — and `applyImport()`, the import merge, shared by both stores. |
 | `src/lib/agentInbox.ts` | The inbox merge: what the AI workflow is allowed to add, and the report of what it did. |
-| `src/lib/genres.ts`, `src/lib/format.ts`, `src/lib/shuffle.ts`, `src/lib/dj.ts`, `src/lib/treeDrag.ts`, `src/lib/sources.ts`, `src/lib/health.ts` | Small pure modules that own one rule each. **Add rules here, not in components.** |
+| `src/lib/genres.ts`, `src/lib/format.ts`, `src/lib/shuffle.ts`, `src/lib/dj.ts`, `src/lib/treeDrag.ts`, `src/lib/sources.ts`, `src/lib/linkHealth.ts` | Small pure modules that own one rule each. **Add rules here, not in components.** |
 | `src/hooks/` | State that has to outlive the component holding it. `useLibrary.ts` is the one door between React and a store — components never touch a store directly; `useFolderExpansion.ts` owns which tree folders are open, because the tree unmounts on a view switch. |
 | `src/lib/navigation.ts` | Which of the three places the app is on, and the back rule, as a pure reducer. |
 | `src/lib/trackSort.ts` | The order of the rows: keys, direction, and "a missing value is always last". |
