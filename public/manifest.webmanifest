@@ -1,0 +1,36 @@
+{
+  "id": "/",
+  "name": "TrackVault",
+  "short_name": "TrackVault",
+  "description": "Personal music library and YouTube audio/video player.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  },
+  "orientation": "any",
+  "background_color": "#04060b",
+  "theme_color": "#04060b",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
