@@ -8,7 +8,7 @@
  *   with cache fallback so newly deployed updates take effect immediately.
  */
 
-const CACHE_NAME = 'trackvault-shell-v4'
+const CACHE_NAME = 'trackvault-shell-v5'
 const SHELL_URLS = [
   '/',
   '/index.html',
