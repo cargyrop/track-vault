@@ -187,11 +187,14 @@ textarea {
 
 button {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-button:hover:not(:disabled) {
-  border-color: var(--line-2);
-  background: var(--s3);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) button:hover:not(:disabled) {
+    border-color: var(--line-2);
+    background: var(--s3);
+  }
 }
 
 button:active:not(:disabled) {
@@ -203,10 +206,12 @@ button:disabled {
   cursor: default;
 }
 
-input:hover:not(:disabled),
-select:hover:not(:disabled),
-textarea:hover:not(:disabled) {
-  border-color: var(--line-2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) input:hover:not(:disabled),
+  :where(.layout-desktop) select:hover:not(:disabled),
+  :where(.layout-desktop) textarea:hover:not(:disabled) {
+    border-color: var(--line-2);
+  }
 }
 
 input::placeholder,
@@ -374,10 +379,12 @@ h1 {
   cursor: pointer;
 }
 
-.topbar-actions .topbar-btn:hover {
-  color: var(--text);
-  background: var(--s3);
-  border-color: var(--line-2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .topbar-actions .topbar-btn:hover {
+    color: var(--text);
+    background: var(--s3);
+    border-color: var(--line-2);
+  }
 }
 
 .topbar-actions .topbar-btn:active {
@@ -394,8 +401,10 @@ h1 {
   color: var(--muted);
 }
 
-.topbar-actions .topbar-btn:hover svg {
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .topbar-actions .topbar-btn:hover svg {
+    color: var(--text);
+  }
 }
 
 .spacer {
@@ -407,7 +416,8 @@ h1 {
    one thing you are invited to do, a filled panel for ordinary controls, and a
    borderless ghost for the ones that are only worth reaching for deliberately. */
 
-.btn-primary {
+.btn-primary,
+.btn-primary:hover:not(:disabled) {
   background: var(--grad);
   border-color: transparent;
   color: #05070d;
@@ -416,11 +426,11 @@ h1 {
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--grad);
-  border-color: transparent;
-  box-shadow: 0 8px 26px -8px rgba(56, 189, 248, 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 8px 26px -8px rgba(56, 189, 248, 0.85),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
 }
 
 .ghost {
@@ -429,16 +439,18 @@ h1 {
   color: var(--t2);
 }
 
-.ghost:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--s3);
-  border-color: var(--line);
-}
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .ghost:hover:not(:disabled) {
+    color: var(--text);
+    background: var(--s3);
+    border-color: var(--line);
+  }
 
-.danger:hover:not(:disabled) {
-  color: var(--danger);
-  background: rgba(251, 113, 133, 0.1);
-  border-color: rgba(251, 113, 133, 0.3);
+  :where(.layout-desktop) .danger:hover:not(:disabled) {
+    color: var(--danger);
+    background: rgba(251, 113, 133, 0.1);
+    border-color: rgba(251, 113, 133, 0.3);
+  }
 }
 
 /* The point-of-no-return button: red rather than gradient, so the most
@@ -452,10 +464,12 @@ h1 {
   font-weight: 600;
 }
 
-.btn-danger:hover:not(:disabled) {
-  background: rgba(251, 113, 133, 0.22);
-  border-color: rgba(251, 113, 133, 0.65);
-  color: #fecdd3;
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .btn-danger:hover:not(:disabled) {
+    background: rgba(251, 113, 133, 0.22);
+    border-color: rgba(251, 113, 133, 0.65);
+    color: #fecdd3;
+  }
 }
 
 .icon-btn {
@@ -470,8 +484,10 @@ h1 {
   border-color: transparent;
 }
 
-.icon-btn:hover:not(:disabled) {
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .icon-btn:hover:not(:disabled) {
+    color: var(--text);
+  }
 }
 
 .file-button {
@@ -543,9 +559,11 @@ h1 {
   transition: border-color 0.14s ease, color 0.14s ease;
 }
 
-.ghost-btn:hover:not(:disabled) {
-  border-color: var(--accent-line);
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .ghost-btn:hover:not(:disabled) {
+    border-color: var(--accent-line);
+    color: var(--accent);
+  }
 }
 
 .ghost-btn:disabled {
@@ -648,8 +666,10 @@ h1 {
   transition: height 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.track-list li:hover {
-  background: var(--s2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover {
+    background: var(--s2);
+  }
 }
 
 .track-list li.selected {
@@ -721,8 +741,10 @@ h1 {
   transition: color 130ms ease;
 }
 
-.track-list li:hover .t-title {
-  color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .t-title {
+    color: #fff;
+  }
 }
 
 .t-artist {
@@ -753,8 +775,10 @@ h1 {
   transition: color 200ms ease;
 }
 
-.track-list li:hover .t-duration {
-  color: var(--t2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .t-duration {
+    color: var(--t2);
+  }
 }
 
 .track-list li.selected .t-duration {
@@ -783,11 +807,17 @@ h1 {
   transition: opacity 130ms ease, transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.track-list li:hover .row-actions,
 .track-list li:focus-within .row-actions,
 .track-list li.selected .row-actions {
   opacity: 1;
   transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .row-actions {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Small square icon buttons rather than bare glyphs: at 24px a text character
@@ -805,10 +835,12 @@ h1 {
   color: var(--muted);
 }
 
-.row-actions .ghost:hover:not(:disabled) {
-  background: var(--s4);
-  color: var(--text);
-  border-color: var(--line);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .row-actions .ghost:hover:not(:disabled) {
+    background: var(--s4);
+    color: var(--text);
+    border-color: var(--line);
+  }
 }
 
 /* ----------------------------------------------------------------- filters */
@@ -866,7 +898,8 @@ h1 {
 
 /* The genre toggle on, in the same vocabulary as the play button: gradient fill
    for "this one is selected", because selection is state and state is accent. */
-.chip.toggle.on {
+.chip.toggle.on,
+.chip.toggle.on:hover:not(:disabled) {
   background: var(--grad);
   border-color: transparent;
   color: #05070d;
@@ -1141,10 +1174,12 @@ h1 {
   transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
-.track-card-btn:hover:not(:disabled) {
-  background: var(--s4);
-  border-color: var(--line-3);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-card-btn:hover:not(:disabled) {
+    background: var(--s4);
+    border-color: var(--line-3);
+    transform: translateY(-1px);
+  }
 }
 
 /* ---------------------------------------------------------------- sliders
@@ -1224,14 +1259,16 @@ h1 {
 
 /* The halo grows on hover so the grab target announces itself without changing
    size, which would make the row reflow under the pointer. */
-.seek:hover::-webkit-slider-thumb,
-.volume-slider:hover::-webkit-slider-thumb {
-  box-shadow: 0 0 0 7px rgba(56, 189, 248, 0.2), 0 2px 10px rgba(0, 0, 0, 0.7);
-}
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .seek:hover::-webkit-slider-thumb,
+  :where(.layout-desktop) .volume-slider:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 0 7px rgba(56, 189, 248, 0.2), 0 2px 10px rgba(0, 0, 0, 0.7);
+  }
 
-.seek:hover::-moz-range-thumb,
-.volume-slider:hover::-moz-range-thumb {
-  box-shadow: 0 0 0 7px rgba(56, 189, 248, 0.2), 0 2px 10px rgba(0, 0, 0, 0.7);
+  :where(.layout-desktop) .seek:hover::-moz-range-thumb,
+  :where(.layout-desktop) .volume-slider:hover::-moz-range-thumb {
+    box-shadow: 0 0 0 7px rgba(56, 189, 248, 0.2), 0 2px 10px rgba(0, 0, 0, 0.7);
+  }
 }
 
 .seek:active::-webkit-slider-thumb,
@@ -1322,11 +1359,13 @@ h1 {
     box-shadow 140ms ease, transform 100ms ease;
 }
 
-.t-btn:hover:not(:disabled) {
-  background: var(--s4);
-  border-color: var(--line-2);
-  color: #fff;
-  box-shadow: var(--lift), 0 8px 20px -10px rgba(0, 0, 0, 0.9);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .t-btn:hover:not(:disabled) {
+    background: var(--s4);
+    border-color: var(--line-2);
+    color: #fff;
+    box-shadow: var(--lift), 0 8px 20px -10px rgba(0, 0, 0, 0.9);
+  }
 }
 
 .t-btn:disabled {
@@ -1341,7 +1380,8 @@ h1 {
 
 /* The one control that gets the accent fill. It is also the only wide one, so
    it is findable by shape alone before you read the label on it. */
-.t-btn.primary {
+.t-btn.primary,
+.t-btn.primary:hover:not(:disabled) {
   background: var(--grad);
   border-color: transparent;
   color: #05070d;
@@ -1351,11 +1391,11 @@ h1 {
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.t-btn.primary:hover:not(:disabled) {
-  background: var(--grad);
-  color: #05070d;
-  box-shadow: 0 14px 34px -10px rgba(56, 189, 248, 0.95),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .t-btn.primary:hover:not(:disabled) {
+    box-shadow: 0 14px 34px -10px rgba(56, 189, 248, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
 }
 
 .t-label {
@@ -1408,15 +1448,18 @@ h1 {
   color: var(--muted);
 }
 
-.view-toggles .t-btn:hover:not(:disabled) {
-  background: var(--s3);
-  border-color: transparent;
-  color: var(--text);
-  box-shadow: none;
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .view-toggles .t-btn:hover:not(:disabled) {
+    background: var(--s3);
+    border-color: transparent;
+    color: var(--text);
+    box-shadow: none;
+  }
 }
 
 /* Filled while in effect, the same way the primary play button is. */
-.view-toggles .t-btn[aria-pressed='true'] {
+.view-toggles .t-btn[aria-pressed='true'],
+.view-toggles .t-btn[aria-pressed='true']:hover:not(:disabled) {
   background: var(--s4);
   border-color: var(--line-2);
   color: var(--accent);
@@ -1541,8 +1584,10 @@ h1 {
   transition: background 140ms ease;
 }
 
-.fs-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.24);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .fs-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.24);
+  }
 }
 
 .fs-btn:disabled {
@@ -1550,7 +1595,8 @@ h1 {
   cursor: not-allowed;
 }
 
-.fs-btn.primary {
+.fs-btn.primary,
+.fs-btn.primary:hover:not(:disabled) {
   background: var(--accent);
   border-color: transparent;
   color: #05070d;
@@ -1998,9 +2044,11 @@ h1 {
   border-color: var(--line);
 }
 
-.match-list button:hover:not(:disabled) {
-  background: var(--s3);
-  border-color: var(--accent-line);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .match-list button:hover:not(:disabled) {
+    background: var(--s3);
+    border-color: var(--accent-line);
+  }
 }
 
 .match-list em {
@@ -2239,8 +2287,10 @@ h1 {
   border-radius: var(--r-xs);
 }
 
-.tree-row:hover {
-  background: var(--s3);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .tree-row:hover {
+    background: var(--s3);
+  }
 }
 
 .tree-row.selected {
@@ -2289,7 +2339,12 @@ h1 {
 .tree-label:hover:not(:disabled) {
   background: transparent;
   border-color: transparent;
-  color: var(--text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .tree-label:hover:not(:disabled) {
+    color: var(--text);
+  }
 }
 
 .tree-label svg {
@@ -2394,13 +2449,16 @@ h1 {
   transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
 }
 
-.tool-btn:hover:not(:disabled) {
-  background: var(--s4);
-  color: var(--text);
-  border-color: var(--line);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .tool-btn:hover:not(:disabled) {
+    background: var(--s4);
+    color: var(--text);
+    border-color: var(--line);
+  }
 }
 
-.tool-btn.on {
+.tool-btn.on,
+.tool-btn.on:hover:not(:disabled) {
   color: #05070d;
   background: var(--grad);
   border-color: transparent;
@@ -2442,12 +2500,14 @@ h1 {
   color: var(--accent);
 }
 
-.track-list li:hover .row-num .num {
-  display: none;
-}
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .row-num .num {
+    display: none;
+  }
 
-.track-list li:hover .row-num .row-play {
-  display: grid;
+  :where(.layout-desktop) .track-list li:hover .row-num .row-play {
+    display: grid;
+  }
 }
 
 .row-playing {
@@ -2503,8 +2563,10 @@ h1 {
   transition: color 130ms ease;
 }
 
-.track-list li:hover .line-title {
-  color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .line-title {
+    color: #fff;
+  }
 }
 
 .line-dash {
@@ -2542,8 +2604,10 @@ h1 {
   transition: background 130ms ease, opacity 130ms ease;
 }
 
-.track-list.reorder li:hover .row-num .row-play {
-  transform: translateX(4px);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list.reorder li:hover .row-num .row-play {
+    transform: translateX(4px);
+  }
 }
 
 .row-grip {
@@ -2562,14 +2626,19 @@ h1 {
   transition: opacity 130ms ease, color 130ms ease;
 }
 
-.track-list li:hover .row-grip,
 .track-list li:focus-within .row-grip,
 .track-list li.dragging .row-grip {
   opacity: 0.7;
 }
 
-.row-grip:hover {
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .row-grip {
+    opacity: 0.7;
+  }
+
+  :where(.layout-desktop) .row-grip:hover {
+    color: var(--accent);
+  }
 }
 
 .row-grip:active {
@@ -2916,16 +2985,18 @@ h1 {
   text-align: left;
 }
 
-.menu-item:hover:not(:disabled) {
-  background: var(--s4);
-  border-color: transparent;
-  color: var(--text);
-}
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .menu-item:hover:not(:disabled) {
+    background: var(--s4);
+    border-color: transparent;
+    color: var(--text);
+  }
 
-.menu-item.danger:hover:not(:disabled) {
-  background: rgba(251, 113, 133, 0.12);
-  border-color: transparent;
-  color: var(--danger);
+  :where(.layout-desktop) .menu-item.danger:hover:not(:disabled) {
+    background: rgba(251, 113, 133, 0.12);
+    border-color: transparent;
+    color: var(--danger);
+  }
 }
 
 
@@ -3051,12 +3122,15 @@ h1 {
   font-weight: 550;
 }
 
-.topnav-btn:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--s2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .topnav-btn:hover:not(:disabled) {
+    color: var(--text);
+    background: var(--s2);
+  }
 }
 
-.topnav-btn.on {
+.topnav-btn.on,
+.topnav-btn.on:hover:not(:disabled) {
   color: var(--text);
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.08));
   border-color: var(--accent-line);
@@ -3084,12 +3158,15 @@ h1 {
   box-shadow: var(--lift);
 }
 
-.topbar-btn:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--line-2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .topbar-btn:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--line-2);
+  }
 }
 
-.topbar-btn.primary {
+.topbar-btn.primary,
+.topbar-btn.primary:hover:not(:disabled) {
   background: var(--grad);
   border-color: transparent;
   color: #04070d;
@@ -3178,9 +3255,11 @@ h1 {
   font-weight: 550;
 }
 
-.screen-back:hover:not(:disabled) {
-  background: var(--s2);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .screen-back:hover:not(:disabled) {
+    background: var(--s2);
+    color: var(--text);
+  }
 }
 
 /* ------------------------------------------------------------ library browser */
@@ -3247,12 +3326,15 @@ h1 {
   text-align: left;
 }
 
-.browser-row:hover:not(:disabled) {
-  background: var(--s2);
-  border-color: var(--line);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .browser-row:hover:not(:disabled) {
+    background: var(--s2);
+    border-color: var(--line);
+  }
 }
 
-.browser-row.on {
+.browser-row.on,
+.browser-row.on:hover:not(:disabled) {
   background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.04));
   border-color: var(--accent-line);
   color: var(--text);
@@ -3306,9 +3388,11 @@ h1 {
   line-height: 1;
 }
 
-.browser-more:hover {
-  background: var(--s2);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .browser-more:hover {
+    background: var(--s2);
+    color: var(--text);
+  }
 }
 
 .browser-empty {
@@ -3405,7 +3489,8 @@ h1 {
   flex-wrap: wrap;
 }
 
-.play-primary {
+.play-primary,
+.play-primary:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3422,8 +3507,10 @@ h1 {
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.play-primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .play-primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
 }
 
 .play-primary:disabled {
@@ -3473,9 +3560,11 @@ h1 {
   font-size: 11.5px;
 }
 
-.playing-from:hover {
-  border-color: var(--line-2);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .playing-from:hover {
+    border-color: var(--line-2);
+    color: var(--text);
+  }
 }
 
 .playing-from-text {
@@ -3544,10 +3633,17 @@ h1 {
   font-weight: 550;
 }
 
-.toolbar-btn:hover,
-.toolbar-btn.on {
+.toolbar-btn.on,
+.toolbar-btn.on:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--line-2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .toolbar-btn:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--line-2);
+  }
 }
 
 .badge {
@@ -3664,9 +3760,11 @@ h1 {
   opacity: 0.35;
 }
 
-.sort-dir:hover:not(:disabled) {
-  background: var(--s3);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .sort-dir:hover:not(:disabled) {
+    background: var(--s3);
+    color: var(--text);
+  }
 }
 
 .toolbar-tokens {
@@ -3689,8 +3787,10 @@ h1 {
   font-size: 11.5px;
 }
 
-.token:hover {
-  border-color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .token:hover {
+    border-color: var(--accent);
+  }
 }
 
 .token.clear {
@@ -3741,8 +3841,10 @@ h1 {
   display: none;
 }
 
-.track-list li:hover {
-  background: var(--s2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover {
+    background: var(--s2);
+  }
 }
 
 .track-list li.playing {
@@ -3833,15 +3935,20 @@ h1 {
   transition: opacity 120ms ease;
 }
 
-.track-list li:hover .row-more,
 .track-list li:focus-within .row-more,
 .touch .row-more {
   opacity: 1;
 }
 
-.row-more:hover {
-  background: var(--s3);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .track-list li:hover .row-more {
+    opacity: 1;
+  }
+
+  :where(.layout-desktop) .row-more:hover {
+    background: var(--s3);
+    color: var(--text);
+  }
 }
 
 .row-grip {
@@ -4047,14 +4154,17 @@ h1 {
   display: block;
 }
 
-.dock-btn:hover:not(:disabled) {
-  background: var(--s2);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .dock-btn:hover:not(:disabled) {
+    background: var(--s2);
+    color: var(--text);
+  }
 }
 
 /* A touch smaller than the 46px it was: the play mark is the tallest thing in
    the dock's centre column, and the seek bar needed the room above the edge. */
-.dock-btn.primary {
+.dock-btn.primary,
+.dock-btn.primary:hover:not(:disabled) {
   width: 42px;
   height: 42px;
   background: var(--grad);
@@ -4285,12 +4395,15 @@ h1 {
   display: block;
 }
 
-.q-tool:hover:not(:disabled) {
-  background: var(--s3);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .q-tool:hover:not(:disabled) {
+    background: var(--s3);
+    color: var(--text);
+  }
 }
 
-.q-tool[aria-pressed='true'] {
+.q-tool[aria-pressed='true'],
+.q-tool[aria-pressed='true']:hover:not(:disabled) {
   background: var(--accent-a);
   border-color: var(--accent-line);
   color: var(--accent);
@@ -4324,11 +4437,14 @@ h1 {
   font-size: 13px;
 }
 
-.queue-list button:hover:not(:disabled) {
-  background: var(--s2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .queue-list button:hover:not(:disabled) {
+    background: var(--s2);
+  }
 }
 
-.queue-list li.playing button {
+.queue-list li.playing button,
+.queue-list li.playing button:hover:not(:disabled) {
   background: var(--accent-a);
   color: var(--text);
 }
@@ -4453,9 +4569,11 @@ h1 {
   font-weight: 550;
 }
 
-.you-actions .ghost-btn:hover {
-  color: var(--text);
-  border-color: var(--line-2);
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .you-actions .ghost-btn:hover {
+    color: var(--text);
+    border-color: var(--line-2);
+  }
 }
 
 /* -------------------------------------------------------------- shortcuts */
@@ -5302,13 +5420,16 @@ body.dragging-col {
   color: var(--t2);
 }
 
-.player.full .transport-actions .t-btn:hover:not(:disabled) {
-  background: var(--s3);
-  color: var(--text);
-  box-shadow: none;
+@media (hover: hover) and (pointer: fine) {
+  :where(.layout-desktop) .player.full .transport-actions .t-btn:hover:not(:disabled) {
+    background: var(--s3);
+    color: var(--text);
+    box-shadow: none;
+  }
 }
 
-.player.full .transport-actions .t-btn[aria-pressed='true'] {
+.player.full .transport-actions .t-btn[aria-pressed='true'],
+.player.full .transport-actions .t-btn[aria-pressed='true']:hover:not(:disabled) {
   background: var(--s4);
   border-color: var(--line-2);
   color: var(--accent);
@@ -5322,7 +5443,8 @@ body.dragging-col {
 }
 
 /* ------------------------------------------------------------------ the queue */
-.player-screen-head .ghost-btn.on {
+.player-screen-head .ghost-btn.on,
+.player-screen-head .ghost-btn.on:hover:not(:disabled) {
   color: #05070d;
   background: var(--grad);
   border-color: transparent;
@@ -5888,7 +6010,9 @@ body.dragging-col .sidebar-resize::after {
 /* The chosen face of the transport: which version is playing, and which of
    info/lyrics is open. Both are states, so both are lit. */
 .player.full .transport-views .t-btn[aria-pressed='true'],
-.player.full .transport-panes .t-btn[aria-pressed='true'] {
+.player.full .transport-views .t-btn[aria-pressed='true']:hover:not(:disabled),
+.player.full .transport-panes .t-btn[aria-pressed='true'],
+.player.full .transport-panes .t-btn[aria-pressed='true']:hover:not(:disabled) {
   background: var(--accent-a);
   border-color: var(--accent-line);
   color: var(--accent);
