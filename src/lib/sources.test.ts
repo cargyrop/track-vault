@@ -5,7 +5,6 @@ import {
   pickSourceForView,
   resolveRole,
   sourceForRole,
-  streamingRole,
 } from './sources'
 import type { Source } from './types'
 
@@ -48,7 +47,6 @@ describe('source roles', () => {
     // track is a whole track, not a track that cannot start.
     expect(pickSourceForView([video], 'audio')).toBe(video)
     expect(pickSourceForView([video], 'video')).toBe(video)
-    expect(streamingRole([video], 'audio')).toBe('video')
   })
 
   it('calls a track playable with a Main or a clip, and not with live alone', () => {
@@ -91,21 +89,3 @@ describe('coverSourceVideoId', () => {
   })
 })
 
-describe('streamingRole', () => {
-  it('names the slot that is actually playing', () => {
-    expect(streamingRole([audio, video], 'audio')).toBe('audio')
-    expect(streamingRole([audio, video], 'video')).toBe('video')
-  })
-
-  it('reads audio in video view when no clip is attached', () => {
-    // Video mode with no video source still streams the audio source, so a
-    // label built from the view alone would name a clip that isn't there.
-    expect(pickSourceForView([audio], 'video')).toBe(audio)
-    expect(streamingRole([audio], 'video')).toBe('audio')
-  })
-
-  it('has nothing to say about a track with no sources', () => {
-    expect(streamingRole([], 'audio')).toBeNull()
-    expect(streamingRole([], 'video')).toBeNull()
-  })
-})

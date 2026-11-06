@@ -161,38 +161,6 @@ for (const [label, make] of stores) {
 }
 
 /**
- * Two store queries the library reads: the latest additions, newest-first and
- * capped, and every id filed in some playlist. Both stores must answer them the
- * same way. Same shared-contract loop.
- */
-for (const [label, make] of stores) {
-  describe(`recent and filed ids (${label})`, () => {
-    it('lists the latest additions newest-first, capped', async () => {
-      const lib = await make()
-      const a = await lib.addTrack(track({ title: 'First', artist: 'A' }))
-      const b = await lib.addTrack(track({ title: 'Second', artist: 'B' }))
-      const c = await lib.addTrack(track({ title: 'Third', artist: 'C' }))
-      void a
-      const recent = await lib.listRecentTracks(2)
-      // Newest first; `id` breaks the created-at ties a fast batch leaves.
-      expect(recent.map((t) => t.id)).toEqual([c, b])
-      expect((await lib.listRecentTracks(0))).toEqual([])
-    })
-
-    it('reports every id filed in some playlist', async () => {
-      const lib = await make()
-      const filed = await lib.addTrack(track({ title: 'Filed', artist: 'A' }))
-      const loose = await lib.addTrack(track({ title: 'Loose', artist: 'B' }))
-      void loose
-      expect(await lib.listFiledTrackIds()).toEqual([])
-      const pl = await lib.createPlaylist('P')
-      await lib.addToPlaylist(pl, filed)
-      expect(await lib.listFiledTrackIds()).toEqual([filed])
-    })
-  })
-}
-
-/**
  * The client-side helper the app uses for folder/playlist views must agree
  * with both stores on every facet except `unfiledOnly`, which needs
  * membership no bare track can answer. One library, several filters, three

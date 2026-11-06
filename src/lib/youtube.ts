@@ -25,14 +25,10 @@ export function parseYouTubeId(input: string): string | null {
 
   return null
 }
+
 export function watchUrl(id: string): string {
   return `https://www.youtube.com/watch?v=${id}`
 }
-
-export function embedUrl(id: string): string {
-  return `https://www.youtube-nocookie.com/embed/${id}`
-}
-
 
 /**
  * Quality tiers requested from the player.
@@ -50,12 +46,8 @@ export type PlaybackQuality = 'auto' | 'tiny' | 'small' | 'medium' | 'high'
 /**
  * The one tier audio mode uses.
  *
- * There used to be a Bandwidth dropdown offering four tiers. It was removed
- * because it traded a real saving against a confusing knob: the lower settings
- * were strictly worse in every respect (same audio, blurrier video nobody can
- * see in a 1x1 frame), so the only sensible choice was the lowest tier and the
- * menu existed only to let people pick worse. Audio mode now pins this value
- * with no control, and video mode leaves quality to YouTube.
+ * Audio mode pins the lowest video rendition with no control, and video mode
+ * leaves quality to YouTube.
  */
 export const AUDIO_SAVER_QUALITY: PlaybackQuality = 'tiny'
 
@@ -68,62 +60,6 @@ export const AUDIO_SAVER_QUALITY: PlaybackQuality = 'tiny'
  * saving there comes from pinning the video rendition as low as possible.
  */
 export const AUTO_QUALITY: PlaybackQuality = 'auto'
-
-/** Approximate video bitrate per tier, used only for the bandwidth estimate. */
-const VIDEO_KBPS: Record<PlaybackQuality, number> = {
-  // Adaptive playback is assumed to land near the top tier for an estimate.
-  auto: 2500,
-  tiny: 0,
-  small: 100,
-  medium: 500,
-  high: 2500,
-}
-
-/** YouTube's shared audio rendition is roughly this, regardless of video quality. */
-const AUDIO_KBPS = 128
-
-/**
- * Estimates transfer for a track, so the UI can show the real saving rather
- * than a vague claim. Assumes a constant ~128 kbps audio stream, which is what
- * YouTube serves across quality levels.
- */
-export function estimateSavings(
-  durationSeconds: number,
-  from: PlaybackQuality,
-  to: PlaybackQuality,
-): { fromMb: number; toMb: number; savedMb: number } {
-  const seconds = Math.max(0, durationSeconds)
-  const audioMb = (AUDIO_KBPS * seconds) / 8 / 1024
-  const fromMb = audioMb + (VIDEO_KBPS[from] * seconds) / 8 / 1024
-  const toMb = audioMb + (VIDEO_KBPS[to] * seconds) / 8 / 1024
-  return {
-    fromMb: Math.round(fromMb),
-    toMb: Math.round(toMb),
-    savedMb: Math.max(0, Math.round(fromMb - toMb)),
-  }
-}
-
-/**
- * Builds the embed URL with the requested quality.
- *
- * `vq` is YouTube's own documented player parameter for a preferred quality
- * tier. It is a *request*, not a lock — the player may adapt upward on a fast
- * connection, which is why the collapsed iframe in audio mode is the more
- * reliable lever.
- */
-export function embedUrlWithQuality(
-  id: string,
-  quality: PlaybackQuality,
-): string {
-  const params = new URLSearchParams({
-    rel: '0',
-    modestbranding: '1',
-    playsinline: '1',
-  })
-  // 'auto' means "let YouTube decide", which is expressed by omitting vq.
-  if (quality !== 'auto') params.set('vq', quality)
-  return `${embedUrl(id)}?${params.toString()}`
-}
 
 /** Human-readable summary of the shapes parseYouTubeId accepts. */
 export const YOUTUBE_INPUT_HINT =

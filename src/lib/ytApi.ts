@@ -15,12 +15,17 @@ export interface YTPlayer {
   pauseVideo(): void
   stopVideo(): void
   /** Cues (loads without playing) a video and leaves the player stopped. */
-  cueVideoById(videoId: string, startSeconds?: number): void
+  cueVideoById(
+    videoId: string,
+    startSeconds?: number,
+    suggestedQuality?: string,
+  ): void
   loadVideoById(
     videoId: string,
     startSeconds?: number,
     suggestedQuality?: string,
   ): void
+  setSize?(width: number, height: number): void
   seekTo(seconds: number, allowSeekAhead: boolean): void
   getCurrentTime(): number
   getDuration(): number
@@ -131,6 +136,16 @@ export interface CreatePlayerOptions {
   startMuted?: boolean
   width?: number
   height?: number
+  /**
+   * Fired immediately whenever the embedded player changes state.
+   *
+   * Essential for background tabs and mobile browsers: `setInterval` polling is
+   * throttled or suspended when a tab is hidden, whereas the iframe's
+   * `onStateChange` postMessage arrives as soon as a track reaches `ENDED`.
+   */
+  onStateChange?: (state: number, player: YTPlayer) => void
+  /** Fired when a video loaded into an already-ready player reports an error. */
+  onError?: (message: string, code: number) => void
 }
 
 /**
@@ -191,7 +206,10 @@ export async function createPlayer(
   host.appendChild(mount)
 
   return new Promise<YTPlayer>((resolve, reject) => {
+    let settled = false
     const fail = (error: Error) => {
+      if (settled) return
+      settled = true
       mount.remove()
       reject(error)
     }
@@ -204,7 +222,19 @@ export async function createPlayer(
       height: options.height ?? 1,
       events: {
         onReady: (event: { target: YTPlayer }) => {
+          settled = true
           const ready = event.target
+          try {
+            const iframe = ready.getIframe?.()
+            if (iframe) {
+              iframe.setAttribute(
+                'allow',
+                'autoplay; encrypted-media; picture-in-picture; fullscreen',
+              )
+            }
+          } catch {
+            // Stubs without getIframe are unaffected.
+          }
           // Apply the level before muting: setVolume(0) and mute() are not the
           // same thing to the player, and unmuting later must restore the level
           // rather than fall back to 100.
@@ -235,8 +265,18 @@ export async function createPlayer(
           }
           resolve(ready)
         },
-        onError: (event: { data: number }) =>
-          fail(new Error(youtubeErrorMessage(event.data))),
+        onStateChange: (event: { data: number; target: YTPlayer }) => {
+          options.onStateChange?.(Number(event.data), event.target)
+        },
+        onError: (event: { data: number }) => {
+          const code = Number(event.data)
+          const message = youtubeErrorMessage(code)
+          if (settled) {
+            options.onError?.(message, code)
+          } else {
+            fail(new Error(message))
+          }
+        },
       },
     })
   })

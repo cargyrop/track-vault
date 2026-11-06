@@ -3,11 +3,6 @@ import { Library } from './db'
 import { createMemoryDriver } from './drivers'
 import { buildMusicBrainzQuery, guessFromYouTubeTitle, titleCase } from './metadata'
 import { parseYouTubeId } from './youtube'
-import {
-  embedUrlWithQuality,
-  estimateSavings,
-  type PlaybackQuality,
-} from './youtube'
 import { youtubeErrorMessage } from './ytApi'
 import { thumbnailUrls, coverCandidates, isPlaceholderThumbnail } from './ytMeta'
 import { EMPTY_FILTER, type LibraryFilter, type NewTrack } from './types'
@@ -665,67 +660,5 @@ describe('buildMusicBrainzQuery', () => {
 describe('titleCase', () => {
   it('normalises tag casing from MusicBrainz', () => {
     expect(titleCase('hip hop')).toBe('Hip Hop')
-  })
-})
-
-describe('bandwidth tiers', () => {
-  it('requests the preferred quality via YouTube params', () => {
-    const url = new URL(embedUrlWithQuality('dQw4w9WgXcQ', 'tiny'))
-    expect(url.hostname).toBe('www.youtube-nocookie.com')
-    expect(url.pathname).toBe('/embed/dQw4w9WgXcQ')
-    expect(url.searchParams.get('vq')).toBe('tiny')
-    expect(url.searchParams.get('rel')).toBe('0')
-  })
-
-  it('leaves quality to YouTube in auto mode', () => {
-    const url = new URL(embedUrlWithQuality('dQw4w9WgXcQ', 'auto'))
-    expect(url.searchParams.get('vq')).toBeNull()
-    // The parameters that do apply in video mode are still sent.
-    expect(url.searchParams.get('rel')).toBe('0')
-  })
-
-  it('saves real data on a music-length track', () => {
-    // A 6-minute track: audio is a small fraction of full-quality video.
-    const audio = estimateSavings(360, 'high', 'tiny')
-    expect(audio.savedMb).toBeGreaterThan(0)
-    expect(audio.toMb).toBeLessThan(audio.fromMb)
-    // Audio-only mode drops the video track entirely.
-    const floor = (128 * 360) / 8 / 1024
-    expect(audio.toMb).toBeGreaterThanOrEqual(Math.floor(floor))
-    expect(audio.toMb).toBeLessThanOrEqual(Math.ceil(floor))
-  })
-
-  it('keeps audio bitrate constant across tiers, so quality only cuts video', () => {
-    // The audio floor is the audio-only size regardless of what we came from.
-    const fromHigh = estimateSavings(360, 'high', 'tiny').toMb
-    const fromLow = estimateSavings(360, 'small', 'tiny').toMb
-    expect(fromHigh).toBe(fromLow)
-    // And it is strictly below any tier that still ships video.
-    expect(fromHigh).toBeLessThan(estimateSavings(360, 'high', 'small').toMb)
-  })
-
-  it('reports no saving when already at the target tier', () => {
-    expect(estimateSavings(360, 'tiny', 'tiny').savedMb).toBe(0)
-    expect(estimateSavings(360, 'high', 'high').savedMb).toBe(0)
-  })
-
-  it('is monotonic: saving more bandwidth never costs more data', () => {
-    // Listed worst-to-best, so each step must cost the same or less. The tiers
-    // are spelled out here rather than imported, because the Bandwidth dropdown
-    // that once listed them was removed: audio mode pins the lowest rendition
-    // with no control. The ladder is kept as a property of the estimate, not of
-    // a menu.
-    const ladder: PlaybackQuality[] = ['high', 'medium', 'small', 'tiny']
-    let previous = estimateSavings(1800, 'high', 'high').toMb
-    for (const tier of ladder) {
-      const size = estimateSavings(1800, 'high', tier).toMb
-      expect(size).toBeLessThanOrEqual(previous)
-      previous = size
-    }
-  })
-
-  it('handles zero and negative durations without NaN', () => {
-    expect(estimateSavings(0, 'high', 'tiny').toMb).toBe(0)
-    expect(Number.isNaN(estimateSavings(-50, 'high', 'tiny').toMb)).toBe(false)
   })
 })

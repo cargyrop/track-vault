@@ -49,6 +49,19 @@ export function normaliseDuration(value: number | null | undefined): number | nu
   return Math.round(value)
 }
 
+/**
+ * A requested index pinned into a list of `length` slots.
+ *
+ * Shared by both playlist re-order paths so the SQL and JSON stores clamp a
+ * drop in exactly the same way — a pointer can land outside the list, and "past
+ * the end" has to mean the last slot in both of them.
+ */
+export function clampIndex(toIndex: number, length: number): number {
+  const wanted = Math.trunc(toIndex)
+  const safe = Number.isFinite(wanted) ? wanted : 0
+  return Math.min(Math.max(safe, 0), Math.max(length, 0))
+}
+
 /** The largest positive whole id a raw list of rows claims, 0 when none do. */
 function highestId(rows: unknown[]): number {
   let max = 0

@@ -58,10 +58,6 @@ export function pickSourceForView(sources: Source[], view: PlaybackView): Source
   return sourceForRole(sources, 'live') ?? video ?? main ?? first
 }
 
-export function streamingRole(sources: Source[], view: PlaybackView): SourceRole | null {
-  return pickSourceForView(sources, view)?.role ?? null
-}
-
 export function coverSourceVideoId(sources: Source[]): string | null {
   return pickSourceForView(sources, 'audio')?.youtubeId ?? null
 }

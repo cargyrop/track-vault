@@ -18,14 +18,15 @@ import { hasPlayableSource, resolveRole } from './sources'
 import {
   applyImport,
   assertReplaceableDocument,
+  clampIndex,
   normaliseDuration,
   type AddTrackOptions,
   type ImportResult,
 } from './libraryImport'
 
-// Kept as a re-export so callers and tests that import it from the SQL store
-// keep working; the implementation lives with the document parser.
-export { normaliseDuration } from './libraryImport'
+// Kept as re-exports so callers and tests that import them from the SQL store
+// keep working; the implementations live with the document parser.
+export { clampIndex, normaliseDuration } from './libraryImport'
 
 /**
  * Minimal SQL surface used by the sql.js browser-local driver and tests.
@@ -38,19 +39,6 @@ export interface SqlDriver {
 }
 
 export const SCHEMA_VERSION = 8
-
-/**
- * A requested index pinned into a list of `length` slots.
- *
- * Shared by both playlist re-order paths so the SQL and JSON stores clamp a
- * drop in exactly the same way — a pointer can land outside the list, and "past
- * the end" has to mean the last slot in both of them.
- */
-export function clampIndex(toIndex: number, length: number): number {
-  const wanted = Math.trunc(toIndex)
-  const safe = Number.isFinite(wanted) ? wanted : 0
-  return Math.min(Math.max(safe, 0), Math.max(length, 0))
-}
 
 const MIGRATIONS: Array<{ version: number; statements: string[] }> = [
   {
@@ -1159,31 +1147,6 @@ export class Library {
           ? null
           : Number(row.folder_id),
     }))
-  }
-
-  /**
-   * The latest additions, newest first, capped — the stable set the Recently
-   * added view narrows within, so filtering never swaps the tracks out from
-   * under the reader. `id` breaks `created_at` ties, which are the rule
-   * rather than the exception when a batch lands several tracks in one
-   * second.
-   */
-  async listRecentTracks(limit: number): Promise<TrackWithSources[]> {
-    const rows = await this.driver.select<Record<string, unknown>>(
-      `SELECT t.* FROM tracks t
-       ORDER BY t.created_at DESC, t.id DESC
-       LIMIT ?`,
-      [Math.max(0, Math.trunc(limit))],
-    )
-    return this.hydrateMany(rows)
-  }
-
-  /** Every track id filed in at least one playlist, for client-side filters. */
-  async listFiledTrackIds(): Promise<number[]> {
-    const rows = await this.driver.select<{ track_id: number }>(
-      'SELECT DISTINCT track_id FROM playlist_tracks',
-    )
-    return rows.map((r) => Number(r.track_id))
   }
 
   /**

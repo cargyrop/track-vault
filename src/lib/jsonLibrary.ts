@@ -14,10 +14,10 @@ import {
   type TrackPatch,
   type TrackWithSources,
 } from './types'
-import { clampIndex } from './db'
 import {
   applyImport,
   assertReplaceableDocument,
+  clampIndex,
   normalise,
   normaliseDuration,
   type AddTrackOptions,
@@ -968,19 +968,6 @@ export class JsonLibrary implements LibraryApi {
   }
 
   /**
-   * The latest additions, newest first, capped — the stable set the Recently
-   * added view narrows within, so filtering never swaps the tracks out from
-   * under the reader. `id` breaks `createdAt` ties, which are the rule
-   * rather than the exception when a batch lands several tracks at once.
-   */
-  async listRecentTracks(limit: number): Promise<TrackWithSources[]> {
-    return [...this.doc.tracks]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
-      .slice(0, Math.max(0, Math.trunc(limit)))
-      .map((t) => this.touch(t))
-  }
-
-  /**
    * Records a track that played to its end.
    *
    * Same promise as the SQL store's: an append, pruned to the shared cap, so
@@ -1027,15 +1014,6 @@ export class JsonLibrary implements LibraryApi {
       .reverse()
       .sort((a, b) => (b.playedAt < a.playedAt ? -1 : b.playedAt > a.playedAt ? 1 : 0))
       .slice(0, Math.max(0, Math.trunc(limit)))
-  }
-
-  /** Every track id filed in at least one playlist, for client-side filters. */
-  async listFiledTrackIds(): Promise<number[]> {
-    const filed = new Set<number>()
-    for (const playlist of this.doc.playlists) {
-      for (const id of playlist.tracks) filed.add(id)
-    }
-    return [...filed]
   }
 
   async addToPlaylist(playlistId: number, trackId: number): Promise<void> {

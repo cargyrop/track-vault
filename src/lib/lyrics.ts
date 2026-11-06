@@ -175,10 +175,3 @@ export async function fetchLyricsResult(
   return null
 }
 
-/** Text-only compatibility helper for callers that do not need attribution. */
-export async function fetchLyrics(
-  query: LyricsQuery,
-  signal?: AbortSignal,
-): Promise<string | null> {
-  return (await fetchLyricsResult(query, signal))?.text ?? null
-}

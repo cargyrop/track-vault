@@ -112,7 +112,3 @@ export function sortTracks<T extends SortableTrack>(
   })
 }
 
-/** True when the order is not the playlist's own, for the toolbar's badge. */
-export function isSorted(sort: SortState): boolean {
-  return sort.key !== 'manual'
-}

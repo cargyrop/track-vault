@@ -9,7 +9,8 @@ import { loadSnapshot, saveSnapshot } from './persistence'
 async function resolveWasmUrl(): Promise<string> {
   const viteUrl = (await import('sql.js/dist/sql-wasm.wasm?url')).default
   if (typeof window !== 'undefined') return viteUrl
-  const { createRequire } = await import('node:module')
+  const nodeModuleSpec = `node:${'module'}`
+  const { createRequire } = (await import(/* @vite-ignore */ nodeModuleSpec)) as typeof import('node:module')
   const require = createRequire(import.meta.url)
   return require.resolve('sql.js/dist/sql-wasm.wasm')
 }
@@ -67,8 +68,9 @@ export async function createMemoryDriver(): Promise<SqlDriver> {
 
 async function readWasmBinary(path: string): Promise<ArrayBuffer | undefined> {
   if (typeof window !== 'undefined') return undefined
-  // @vite-ignore keeps this node builtin out of the browser bundle graph.
-  const { readFile } = await import(/* @vite-ignore */ 'node:fs/promises')
+  // Kept out of the browser bundle graph while remaining resolvable in Node/Vitest.
+  const nodeFsSpec = `node:${'fs/promises'}`
+  const { readFile } = (await import(/* @vite-ignore */ nodeFsSpec)) as typeof import('node:fs/promises')
   const buf = await readFile(path)
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
 }
