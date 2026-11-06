@@ -63,4 +63,11 @@ describe('PlayButton', () => {
       'title="This playlist is empty"',
     )
   })
+
+  it('switches to Pause when the list is actively playing', () => {
+    const primary = render({ variant: 'primary', noun: 'playlist', playing: true })
+    expect(primary).toContain('aria-label="Pause playlist"')
+    expect(primary).toContain('title="Pause this playlist"')
+    expect(primary).toContain('>Pause</span>')
+  })
 })

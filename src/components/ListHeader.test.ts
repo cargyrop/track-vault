@@ -112,4 +112,14 @@ describe('ListHeader', () => {
   it('marks the header when this list is the audible one', () => {
     expect(render({ isAudible: true })).toContain('playing now')
   })
+
+  it('switches the primary Play button to Pause when this audible list is playing', () => {
+    const playingHtml = render({ isAudible: true, isPlaying: true })
+    expect(playingHtml).toContain('aria-label="Pause playlist"')
+    expect(playingHtml).toContain('>Pause</span>')
+
+    const pausedHtml = render({ isAudible: true, isPlaying: false })
+    expect(pausedHtml).toContain('aria-label="Play playlist"')
+    expect(pausedHtml).toContain('>Play</span>')
+  })
 })

@@ -76,6 +76,24 @@ export function PlayIcon({ size = 13 }: { size?: number }) {
   )
 }
 
+/** Two vertical bars: pause what is currently playing. */
+export function PauseIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M7 4.8h3.4v14.4H7zM13.6 4.8H17v14.4h-3.4z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
 /**
  * The shell's marks: the tab bar, the sidebar toggle, and the small chevrons
  * a stack of screens needs.

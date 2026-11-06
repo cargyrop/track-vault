@@ -1,5 +1,5 @@
 import { plural } from '../lib/format'
-import { PlayIcon } from './icons'
+import { PauseIcon, PlayIcon } from './icons'
 
 interface Props {
   /**
@@ -12,7 +12,7 @@ interface Props {
    * of rule that drifts the first time somebody rewords one of them.
    */
   noun: 'list' | 'playlist'
-  /** Starts it, or `null` when there is nothing to start. */
+  /** Starts or pauses it, or `null` when there is nothing to start. */
   onPlay: (() => void) | null
   /** How many tracks it will queue, for the tooltip. */
   count: number
@@ -24,6 +24,8 @@ interface Props {
    * would quietly undo the shuffle button beside it.
    */
   shuffled: boolean
+  /** True when this list is currently playing, switching the button to Pause. */
+  playing?: boolean
   /**
    * How much room the button takes.
    *
@@ -36,32 +38,42 @@ interface Props {
 }
 
 /**
- * The Play button, in the same small square as the transport's controls.
+ * The Play/Pause button, in the same small square as the transport's controls.
  *
  * It stays a real control when the list is empty rather than disappearing —
  * `disabled` with a tooltip that says why — so the row of buttons does not
  * change shape as a filter empties the list underneath it.
  */
-export function PlayButton({ noun, onPlay, count, shuffled, variant = 'tool' }: Props) {
+export function PlayButton({
+  noun,
+  onPlay,
+  count,
+  shuffled,
+  playing = false,
+  variant = 'tool',
+}: Props) {
   const tracks = plural(count, 'track', 'tracks')
+  const label = playing ? `Pause ${noun}` : `Play ${noun}`
+  const titleText = onPlay
+    ? playing
+      ? `Pause this ${noun}`
+      : shuffled
+        ? `Play this ${noun} shuffled — ${tracks}, opening on a random one`
+        : `Play this ${noun} from the top — ${tracks}`
+    : `This ${noun} is empty`
+
   if (variant === 'primary') {
     return (
       <button
         type="button"
         className="play-primary"
-        aria-label={`Play ${noun}`}
+        aria-label={label}
         disabled={!onPlay}
-        title={
-          onPlay
-            ? shuffled
-              ? `Play this ${noun} shuffled — ${tracks}, opening on a random one`
-              : `Play this ${noun} from the top — ${tracks}`
-            : `This ${noun} is empty`
-        }
+        title={titleText}
         onClick={onPlay ?? undefined}
       >
-        <PlayIcon size={15} />
-        <span>Play</span>
+        {playing ? <PauseIcon size={15} /> : <PlayIcon size={15} />}
+        <span>{playing ? 'Pause' : 'Play'}</span>
       </button>
     )
   }
@@ -69,18 +81,13 @@ export function PlayButton({ noun, onPlay, count, shuffled, variant = 'tool' }: 
     <button
       type="button"
       className="tool-btn"
-      aria-label={`Play ${noun}`}
+      aria-label={label}
       disabled={!onPlay}
-      title={
-        onPlay
-          ? shuffled
-            ? `Play this ${noun} shuffled — ${tracks}, opening on a random one`
-            : `Play this ${noun} from the top — ${tracks}`
-          : `This ${noun} is empty`
-      }
+      title={titleText}
       onClick={onPlay ?? undefined}
     >
-      <PlayIcon size={12} />
+      {playing ? <PauseIcon size={12} /> : <PlayIcon size={12} />}
     </button>
   )
 }
+

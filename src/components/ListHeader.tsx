@@ -29,6 +29,8 @@ interface Props {
   description?: string | null
   /** Named when the audible list is *this* one, so Play reads as a repeat. */
   isAudible?: boolean
+  /** True when the audible list is actively streaming, so Play becomes Pause. */
+  isPlaying?: boolean
   onPlayList: (() => void) | null
   shuffle: boolean
   repeat: boolean
@@ -67,6 +69,7 @@ export function ListHeader({
   tracks,
   description,
   isAudible = false,
+  isPlaying = false,
   onPlayList,
   shuffle,
   repeat,
@@ -133,6 +136,7 @@ export function ListHeader({
           onPlay={onPlayList}
           count={count}
           shuffled={shuffle}
+          playing={isAudible && isPlaying}
         />
         <button
           type="button"

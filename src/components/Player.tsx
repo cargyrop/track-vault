@@ -71,6 +71,10 @@ interface Props {
    * again while it is already loaded, and only a change is an instruction.
    */
   playToken?: number
+  /** Bumped when the header Play/Pause button toggles playback in place. */
+  toggleToken?: number
+  /** Reports whether the player is actively streaming, for the list header's Play/Pause button. */
+  onPlayingChange?: (playing: boolean) => void
   /**
    * Switches which source streams.
    *
@@ -291,6 +295,8 @@ export function Player({
   queue = [],
   onAdvance,
   playToken = 0,
+  toggleToken = 0,
+  onPlayingChange,
   onViewChange,
   variant = 'dock',
   onExpand,
@@ -929,6 +935,19 @@ export function Player({
     if (trackId === null) return
     writeStoredProgress(trackId, time, duration || track?.duration || 0)
   }, [trackId, time, duration, track?.duration])
+
+  useEffect(() => {
+    onPlayingChange?.(playing)
+  }, [playing, onPlayingChange])
+
+  const seenToggleTokenRef = useRef(toggleToken)
+  useEffect(() => {
+    if (toggleToken === seenToggleTokenRef.current) return
+    seenToggleTokenRef.current = toggleToken
+    if (trackId !== null) {
+      togglePlay()
+    }
+  }, [toggleToken, trackId, togglePlay])
 
   useEffect(() => {
     const prev = seenState.current
