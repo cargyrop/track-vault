@@ -39,6 +39,8 @@ import {
 } from './hooks/useLyricsBackfill'
 import type { Library } from './lib/db'
 import { createHttpTransport, JsonLibrary } from './lib/jsonLibrary'
+import { hasOpenEscapeLayer } from './hooks/useEscape'
+import { useFocusTrap } from './hooks/useFocusTrap'
 import type {
   LibraryFilter,
   Playlist,
@@ -322,6 +324,10 @@ export function App() {
     return stored && typeof stored.key === 'string' ? stored : DEFAULT_SORT
   })
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // The `You` sheet's panel: the trap needs the element, and `You` is rendered
+  // here rather than owning a hook of its own.
+  const youDialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(youDialog, nav.tab === 'you')
 
   const expanded = nav.tab === 'playing'
   const singlePane = layout !== 'desktop'
@@ -1236,8 +1242,10 @@ export function App() {
         return
       }
       // Escape leaves the player screen, but never out from under a dialog that
-      // is already using the key to close itself.
-      if (e.key === 'Escape' && !document.querySelector('.modal-backdrop')) {
+      // is already using the key to close itself. Asking the dialogs' own stack
+      // rather than looking for a backdrop element keeps this one rule: a
+      // dialog counts as open when it registered, not when it rendered.
+      if (e.key === 'Escape' && !hasOpenEscapeLayer()) {
         if (nav.tab === 'playing') dispatchNav({ type: 'tab', tab: 'library' })
       }
     }
@@ -1899,6 +1907,7 @@ export function App() {
           role="presentation"
         >
           <div
+            ref={youDialog}
             className="modal you-modal"
             role="dialog"
             aria-modal="true"
