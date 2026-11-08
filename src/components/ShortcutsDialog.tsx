@@ -1,4 +1,6 @@
-import { useEffect } from 'react'
+import { useRef } from 'react'
+import { useEscape } from '../hooks/useEscape'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface Props {
   open: boolean
@@ -25,20 +27,18 @@ const SHORTCUTS: Array<[string, string]> = [
  * room from the list when they do not.
  */
 export function ShortcutsDialog({ open, onClose }: Props) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  // On the same one stack as every other dialog: it used to add a listener of
+  // its own, so Escape closed the sheet *and* whatever was open beneath it.
+  useEscape(onClose, open)
+  const dialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(dialog, open)
 
   if (!open) return null
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={dialog}
         className="modal shortcuts"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { plural } from '../lib/format'
 import { useEscape } from '../hooks/useEscape'
 import {
@@ -43,6 +44,8 @@ export function YouScreen({
   onShowShortcuts,
 }: Props) {
   useEscape(onClose)
+  const dialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(dialog)
   const [canInstall, setCanInstall] = useState(() => canTriggerInstallPrompt())
 
   useEffect(
@@ -54,7 +57,7 @@ export function YouScreen({
   )
 
   return (
-    <div className="you">
+    <div className="you" ref={dialog}>
       <header className="modal-header">
         <h2>You</h2>
         <button

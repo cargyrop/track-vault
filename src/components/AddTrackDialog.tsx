@@ -1,5 +1,6 @@
 import { useEscape } from '../hooks/useEscape'
-import { useCallback, useEffect, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   fetchOEmbed,
   guessFromYouTubeTitle,
@@ -80,7 +81,9 @@ export function AddTrackDialog({
   playlists,
   onAddToPlaylist,
 }: Props) {
-  useEscape(onClose)
+  useEscape(onClose, open)
+  const dialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(dialog, open)
   const [slots, setSlots] = useState<Record<SourceRole, Slot>>(emptySlots)
   const [draft, setDraft] = useState(emptyDraft())
   const [oembed, setOembed] = useState<Record<SourceRole, OEmbedInfo | null>>({
@@ -366,6 +369,7 @@ export function AddTrackDialog({
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={dialog}
         className="modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

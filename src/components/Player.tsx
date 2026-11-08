@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { shouldCarryPlayback } from '../lib/playback'
 import { shouldShowHud, HUD_IDLE_MS } from '../lib/hud'
 import {
@@ -361,6 +362,8 @@ export function Player({
   // a quick dialog rather than a permanent row, so the player and its info
   // stay together. Reset per track so a confirmation never lingers on.
   const [fileOpen, setFileOpen] = useState(false)
+  const fileDialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(fileDialog, fileOpen)
   // The queue is a sheet over the full view rather than a third column: it is
   // read for a moment and dismissed, and what is coming next is never worth a
   // permanent third of the window.
@@ -2161,6 +2164,7 @@ export function Player({
           role="presentation"
         >
           <div
+            ref={fileDialog}
             className="modal file-dialog"
             onClick={(e) => e.stopPropagation()}
             role="dialog"

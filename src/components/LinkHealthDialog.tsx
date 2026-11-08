@@ -1,4 +1,5 @@
 import { useEscape } from '../hooks/useEscape'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useEffect, useRef, useState } from 'react'
 import type { SourceRole, TrackWithSources } from '../lib/types'
 import {
@@ -81,7 +82,9 @@ export function LinkHealthDialog({
   onRefresh,
   onOpenCard,
 }: Props) {
-  useEscape(onClose)
+  useEscape(onClose, open)
+  const dialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(dialog, open)
   const [phase, setPhase] = useState<Phase | null>(null)
   const [done, setDone] = useState<Done | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -227,6 +230,7 @@ export function LinkHealthDialog({
   return (
     <div className="modal-backdrop health" onClick={onClose} role="presentation">
       <div
+        ref={dialog}
         className="modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

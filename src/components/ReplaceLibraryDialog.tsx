@@ -1,5 +1,6 @@
 import { useEscape } from '../hooks/useEscape'
-import { useMemo } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useMemo, useRef } from 'react'
 import { normalise } from '../lib/jsonLibrary'
 import { plural } from '../lib/format'
 
@@ -28,6 +29,8 @@ export function ReplaceLibraryDialog({
   onConfirm,
 }: Props) {
   useEscape(onCancel)
+  const dialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(dialog)
   const preview = useMemo(() => {
     let parsed: unknown
     try {
@@ -54,6 +57,7 @@ export function ReplaceLibraryDialog({
   return (
     <div className="modal-backdrop" onClick={onCancel} role="presentation">
       <div
+        ref={dialog}
         className="modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

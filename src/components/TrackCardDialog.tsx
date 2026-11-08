@@ -1,5 +1,6 @@
 import { useEscape } from '../hooks/useEscape'
-import { useCallback, useEffect, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { searchMusicBrainz, type MbMatch } from '../lib/metadata'
 import { fetchOEmbed, guessFromYouTubeTitle } from '../lib/metadata'
 import { bestThumbnail } from '../lib/ytMeta'
@@ -137,7 +138,9 @@ export function TrackCardDialog({
   onSetMusicBrainzId,
   onSetDuration,
 }: Props) {
-  useEscape(onClose)
+  useEscape(onClose, Boolean(track))
+  const dialog = useRef<HTMLDivElement | null>(null)
+  useFocusTrap(dialog, Boolean(track))
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [slots, setSlots] = useState<Record<SourceRole, SlotDraft>>({
@@ -379,6 +382,7 @@ export function TrackCardDialog({
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={dialog}
         className="modal track-card"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
