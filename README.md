@@ -22,7 +22,7 @@ npm install
 npm run dev                        # app + library API on http://localhost:1420
 npm run build && npm run preview   # the built bundle, same API
 npm run check                      # typecheck + tests
-npm test                           # 621 tests
+npm test                           # 595 tests
 npm run typecheck
 
 The server window is the storage. If it is closed while a tab is still open, the
@@ -459,6 +459,10 @@ library.
 
 `space`/`k` play, pause or resume · `n`/`p` next/previous · `s` stop · `m` mute ·
 `-`/`=` volume · `←`/`→` seek 10 seconds · `f` fullscreen · `Esc` close fullscreen.
+
+`Esc` closes one thing per press: with a dialog open it closes the topmost one
+and leaves whatever is underneath alone. `?` shows the same list while you are not
+typing in a field.
 
 ## Limits
 

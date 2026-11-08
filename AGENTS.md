@@ -53,10 +53,14 @@ holds it. Read the anchor, not the file.
 
 | File | The anchor | What that means for you |
 | --- | --- | --- |
-| `src/components/Player.tsx` (~1545 lines) | `Player()` is ~1200 of them | The JSX is long, the rules inside it are not: seek maths, volume steps, quality choice and playback hand-off all live in `src/lib/` (`fit.ts`, `audio.ts`, `sources.ts`, `playback.ts`, `youtube.ts`, `format.ts`). Change the rule there and let the JSX just call it. Icons below `Player()` are local except the shared `icons.tsx`. |
-| `src/lib/db.ts` (~1194 lines) | `class Library`, ~1000 of them | Migrations come first in the class (`SCHEMA_VERSION`), store methods after. Pure helpers (`clampIndex`, `normaliseDuration`, `rowDuration`) sit outside it and are where a parsing rule belongs. |
-| `src/App.tsx` (~1190 lines) | `App()` is ~935 of them | State and wiring: view, selection, playback, rail heights. New behaviour almost never belongs here — put it in a rule in `src/lib` or in the component that shows it, and pass it in. |
-| `src/lib/agentInbox.ts` (~1007 lines) | `mergeInbox()` at the middle | Already split by job: `indexLibrary` → `readSources` → `enrich`/`reject`, with `buildContext` and `AGENT_INSTRUCTIONS` at the bottom. Find the section, do not read the file. |
+| `src/components/Player.tsx` | `grep -n 'function Player'` | One component holds most of the file. The JSX is long, the rules inside it are not: seek maths, volume steps, quality choice and playback hand-off all live in `src/lib/` (`fit.ts`, `audio.ts`, `sources.ts`, `playback.ts`, `youtube.ts`, `format.ts`). Change the rule there and let the JSX just call it. Icons below `Player()` are local except the shared `icons.tsx`. |
+| `src/lib/db.ts` | `grep -n 'class Library'` | Migrations come first in the class (`SCHEMA_VERSION`), store methods after. Pure helpers (`clampIndex`, `normaliseDuration`, `rowDuration`) sit outside it and are where a parsing rule belongs. |
+| `src/App.tsx` | `grep -n 'function App'` | State and wiring: view, selection, playback, rail heights. New behaviour almost never belongs here — put it in a rule in `src/lib` or in the component that shows it, and pass it in. |
+| `src/lib/agentInbox.ts` | `grep -n 'mergeInbox'` | Already split by job: `indexLibrary` → `readSources` → `enrich`/`reject`, with `buildContext` and `AGENT_INSTRUCTIONS` at the bottom. Find the section, do not read the file. |
+
+Anchors are search strings rather than line numbers on purpose: the numbers were
+here first, drifted by half again as the files grew, and sent the next reader to
+the wrong place. `wc -l` when you actually want a size.
 
 Only `src/styles.css` has banner comments; the TypeScript files are navigated by
 their doc comments, so `grep -n "^export function\|^function\|^export class" file`
@@ -116,6 +120,14 @@ working around it:
   restored from storage (`navigation.test.ts`).
 - **The library column's width belongs to the user.** Dragged from its own edge,
   clamped in `App.tsx`, remembered in `localStorage`; never a fixed number.
+- **Escape closes one layer, the last one opened.** `useEscape` keeps the open
+  dialogs in one stack (`src/hooks/useEscape.ts`) and only its top entry answers;
+  `stopPropagation` alone does not, because every listener sits on `window`.
+  `App.tsx` asks `hasOpenEscapeLayer()` rather than looking for a backdrop, so
+  the rule is written once. `useEscape.test.ts`.
+- **A dialog holds the keyboard while it is open.** `useFocusTrap` moves focus
+  in, wraps Tab and Shift+Tab, and gives focus back to the control that opened
+  it. Only the innermost of two stacked dialogs moves focus. `useFocusTrap.test.ts`.
 - **A phone gets no hover-only control and no HTML5 drag.** Touch browsers never
   fire drag events, so filing and reordering have menu paths.
 - **A tablet is a wide phone, not a small desktop.** `singlePane` in `App.tsx`
